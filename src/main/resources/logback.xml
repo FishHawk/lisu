@@ -1,0 +1,28 @@
+<configuration>
+    <timestamp key="timestamp" datePattern="YYYY-MM-dd.HH-mm-ss-SSS"/>
+    <if condition='!isDefined("LISU_DISABLE_LOG_FILE")'>
+        <then>
+            <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+                <file>lisu.${timestamp}.log</file>
+                <append>true</append>
+                <encoder>
+                    <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                </encoder>
+            </appender>
+            <root level="info">
+                <appender-ref ref="FILE"/>
+            </root>
+        </then>
+    </if>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <root level="info">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <logger name="io.netty" level="INFO"/>
+</configuration>
