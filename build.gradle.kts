@@ -2,6 +2,7 @@ plugins {
     application
     kotlin("jvm") version "1.5.30"
     kotlin("plugin.serialization") version "1.5.30"
+    id("com.github.johnrengelman.shadow") version "7.1.0"
 }
 
 group = "me.fishhawk"
@@ -23,7 +24,7 @@ dependencies {
     implementation("io.ktor:ktor-client-serialization:1.6.4")
     testImplementation("io.ktor:ktor-server-test-host:1.6.4")
 
-    implementation("org.codehaus.janino:janino:3.1.2")
+    implementation("org.codehaus.janino:janino:3.1.6")
     implementation("ch.qos.logback:logback-classic:1.2.6")
 
     implementation("se.sawano.java:alphanumeric-comparator:1.4.1")
@@ -40,17 +41,9 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.jar {
+tasks.shadowJar {
+    archiveClassifier.set("")
     manifest {
-        attributes(
-            "Main-Class" to "me.fishhawk.lisu.ApplicationKt",
-            "Implementation-Title" to "me.fishhawk.lisu",
-            "Implementation-Version" to archiveVersion
-        )
+        attributes(Pair("Main-Class", "me.fishhawk.ApplicationKt"))
     }
-    from(sourceSets.main.get().output)
-    dependsOn(configurations.runtimeClasspath)
-    from({
-        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
-    })
 }

@@ -16,8 +16,9 @@
 你也可以使用 docker 运行：
 
 ```shell
-docker build https://github.com/FishHawk/lisu.git -t lisu:latest
-docker run -d -p 8080:8080 --name=lisu -v /<your-library-path>:/data --restart=always lisu:latest
+docker build https://github.com/FishHawk/lisu.git#main -t lisu:latest
+docker image prune -f
+docker run -d -p 8080:8080 -v <your-library-path>:/data --name=lisu --restart=always lisu:latest
 ```
 
 启动后使用浏览器访问 http://localhost:8080/ ，如果显示 `Yes, the server is running!`，说明服务器正常运行。
