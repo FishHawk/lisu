@@ -24,7 +24,7 @@ fun <T> T?.ensureExist(name: String) =
     this ?: throw NotFoundException("No $name found")
 
 @OptIn(KtorExperimentalLocationsAPI::class)
-object ProviderLocation {
+private object ProviderLocation {
     @Location("/provider/{providerId}/icon")
     data class Icon(val providerId: String)
 
@@ -90,11 +90,20 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
     }
 
     get<ProviderLocation.Manga> { loc ->
-        val mangaDetail = manager.providers[loc.providerId]?.getManga(loc.mangaId)
-            ?.copy(inLibrary = library.hasManga(loc.providerId, loc.mangaId))
-            ?: library.getManga(loc.providerId, loc.mangaId)?.getDetail()
-            ?: throw NotFoundException()
-        call.respond(mangaDetail)
+        val manga = library.getManga(loc.providerId, loc.mangaId)
+        manager.providers[loc.providerId]?.let { provider ->
+            val mangaDetail = provider.getManga(loc.mangaId)
+            call.respond(mangaDetail.copy(inLibrary = manga != null))
+
+            if (manga != null) {
+                mangaDetail.cover?.let {
+                    val response = provider.getImage(it)
+                    val cover = response.receive<ByteArray>()
+                    manga.updateCover(response.contentType(), cover)
+                }
+                manga.updateMetadata(mangaDetail.metadataDetail)
+            }
+        } ?: call.respond(manga.ensureExist("manga").getDetail())
     }
 
     get<ProviderLocation.Cover> { loc ->

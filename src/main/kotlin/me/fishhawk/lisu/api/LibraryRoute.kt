@@ -13,7 +13,7 @@ import me.fishhawk.lisu.model.MetadataDetailDto
 import me.fishhawk.lisu.provider.ProviderManager
 
 @OptIn(KtorExperimentalLocationsAPI::class)
-object LibraryLocation {
+private object LibraryLocation {
     @Location("/library/search")
     data class Search(val page: Int, val keywords: String)
 
@@ -22,7 +22,10 @@ object LibraryLocation {
 }
 
 @OptIn(KtorExperimentalLocationsAPI::class)
-fun Route.libraryRoutes(library: Library, manager: ProviderManager) {
+fun Route.libraryRoutes(
+    library: Library,
+    manager: ProviderManager
+) {
     get<LibraryLocation.Search> { loc ->
         val mangaList = library.search(loc.page, loc.keywords)
         call.respond(mangaList)
@@ -30,25 +33,17 @@ fun Route.libraryRoutes(library: Library, manager: ProviderManager) {
 
     post<LibraryLocation.Manga> { loc ->
         val provider = manager.providers[loc.providerId].ensureExist("provider")
-        val mangaDetail = provider.getManga(loc.mangaId).ensureExist("manga")
         val manga = library.createManga(loc.providerId, loc.mangaId)
             ?: return@post call.respondText(status = HttpStatusCode.Conflict, text = "conflict")
+        call.respondText(status = HttpStatusCode.OK, text = "success")
 
+        val mangaDetail = provider.getManga(loc.mangaId).ensureExist("manga")
         mangaDetail.cover?.let {
             val response = provider.getImage(it)
             val cover = response.receive<ByteArray>()
             manga.updateCover(response.contentType(), cover)
         }
-        manga.updateMetadata(
-            MetadataDetailDto(
-                title = mangaDetail.title,
-                authors = mangaDetail.authors,
-                isFinished = mangaDetail.isFinished,
-                description = mangaDetail.description,
-                tags = mangaDetail.tags
-            )
-        )
-        call.respondText(status = HttpStatusCode.OK, text = "success")
+        manga.updateMetadata(mangaDetail.metadataDetail)
     }
 
     delete<LibraryLocation.Manga> { loc ->

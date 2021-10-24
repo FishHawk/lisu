@@ -29,70 +29,53 @@ data class SearchEntry(
 
 
 class Manga(private val path: Path) {
-    private val metadataFile = path.resolve("metadata.json").toFile()
+    val providerId = path.parent.name
+    val id = path.name
 
     fun getSearchEntry(): SearchEntry {
-        return if (!metadataFile.exists()) SearchEntry(title = path.name)
-        else try {
+        if (!metadataFile.exists()) return SearchEntry(title = id)
+        return try {
             Json { ignoreUnknownKeys = true }.decodeFromString(
                 SearchEntry.serializer(),
                 metadataFile.readText()
-            ).let { if (it.title == null) it.copy(title = path.name) else it }
+            ).let { if (it.title == null) it.copy(title = id) else it }
         } catch (e: SerializationException) {
-            SearchEntry(title = path.name)
+            SearchEntry(title = id)
         }
     }
 
     fun get(): MangaDto {
-        val metadata =
-            if (!metadataFile.exists()) MetadataDto()
-            else try {
-                Json { ignoreUnknownKeys = true }.decodeFromString(
-                    MetadataDto.serializer(),
-                    metadataFile.readText()
-                )
-            } catch (e: SerializationException) {
-                MetadataDto()
-            }
+        val metadata = getMetadata()
         return MangaDto(
-            providerId = path.parent.name,
-            id = path.name,
+            providerId = providerId,
+            id = id,
             cover = null,
             updateTime = null,
-            title = metadata.title,
-            authors = metadata.authors,
-            isFinished = metadata.isFinished
+            title = metadata?.title,
+            authors = metadata?.authors,
+            isFinished = metadata?.isFinished
         )
     }
 
     fun getDetail(): MangaDetailDto {
-        val metadata =
-            if (!metadataFile.exists()) MetadataDetailDto()
-            else try {
-                Json { ignoreUnknownKeys = true }.decodeFromString(
-                    MetadataDetailDto.serializer(),
-                    metadataFile.readText()
-                )
-            } catch (e: SerializationException) {
-                MetadataDetailDto()
-            }
+        val metadata = getMetadataDetail()
         val collections = detectCollections(path).ifEmpty { null }
         val chapters = if (collections != null) null else detectChapters(path).ifEmpty { null }
         val previews = if (chapters != null) null else detectPreviews(path).ifEmpty { null }
         return MangaDetailDto(
-            providerId = path.parent.name,
-            id = path.name,
+            providerId = providerId,
+            id = id,
 
             inLibrary = true,
 
             cover = null,
             updateTime = null,
 
-            title = metadata.title,
-            authors = metadata.authors,
-            isFinished = metadata.isFinished,
-            description = metadata.description,
-            tags = metadata.tags,
+            title = metadata?.title,
+            authors = metadata?.authors,
+            isFinished = metadata?.isFinished,
+            description = metadata?.description,
+            tags = metadata?.tags,
 
             collections = collections,
             chapters = chapters,
@@ -100,6 +83,46 @@ class Manga(private val path: Path) {
         )
     }
 
+    private val metadataFile = path.resolve("metadata.json").toFile()
+
+    fun hasMetadata(): Boolean {
+        return metadataFile.exists()
+    }
+
+    private fun getMetadata(): MetadataDto? {
+        if (!metadataFile.exists()) return null
+        return try {
+            Json { ignoreUnknownKeys = true }.decodeFromString(
+                MetadataDto.serializer(),
+                metadataFile.readText()
+            )
+        } catch (e: SerializationException) {
+            null
+        }
+    }
+
+    private fun getMetadataDetail(): MetadataDetailDto? {
+        if (!metadataFile.exists()) return null
+        return try {
+            Json { ignoreUnknownKeys = true }.decodeFromString(
+                MetadataDetailDto.serializer(),
+                metadataFile.readText()
+            )
+        } catch (e: SerializationException) {
+            null
+        }
+    }
+
+    fun updateMetadata(metadata: MetadataDetailDto) {
+        val json = Json.encodeToString(MetadataDetailDto.serializer(), metadata)
+        metadataFile.writeText(json)
+    }
+
+    fun hasCover(): Boolean {
+        val images = path.listImageFiles()
+        val covers = images.filter { it.name == "cover" }.toList()
+        return covers.isNotEmpty()
+    }
 
     fun getCover(): File? {
         val images = path.listImageFiles()
@@ -114,11 +137,6 @@ class Manga(private val path: Path) {
             else contentType.fileExtensions().first()
         val coverFile = path.resolve("cover.$ext").toFile()
         coverFile.writeBytes(cover)
-    }
-
-    fun updateMetadata(metadata: MetadataDetailDto) {
-        val json = Json.encodeToString(MetadataDetailDto.serializer(), metadata)
-        metadataFile.writeText(json)
     }
 
     fun getChapter(collectionId: String, chapterId: String): Chapter? {
@@ -150,5 +168,9 @@ private fun detectChapters(path: Path): List<ChapterDto> {
 }
 
 private fun detectPreviews(path: Path): List<String> {
-    return path.listImageFiles().map { it.name }.sortedWith(naturalOrder()).take(20)
+    return path
+        .listImageFiles()
+        .map { it.name }
+        .sortedWith(naturalOrder())
+        .take(20)
 }

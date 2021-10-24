@@ -20,7 +20,7 @@ import me.fishhawk.lisu.api.providerRoutes
 import me.fishhawk.lisu.api.systemRoutes
 import me.fishhawk.lisu.library.Library
 import me.fishhawk.lisu.provider.ProviderManager
-import kotlin.io.path.*
+import kotlin.io.path.Path
 
 fun main(args: Array<String>) {
     val parser = ArgParser("lisu")
@@ -30,6 +30,7 @@ fun main(args: Array<String>) {
 
     val library = Library(Path(libraryPath))
     val manager = ProviderManager()
+
     embeddedServer(Netty, port) { lisuModule(library, manager) }.start(wait = true)
 }
 

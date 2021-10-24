@@ -39,4 +39,13 @@ data class MangaDetailDto(
     val collections: Map<String, List<ChapterDto>>? = null,
     val chapters: List<ChapterDto>? = null,
     var preview: List<String>? = null
-)
+) {
+    val metadataDetail
+        get() = MetadataDetailDto(
+            title = title,
+            authors = authors,
+            isFinished = isFinished,
+            description = description,
+            tags = tags
+        )
+}
