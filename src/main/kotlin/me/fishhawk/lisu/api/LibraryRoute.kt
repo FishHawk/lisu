@@ -9,13 +9,15 @@ import io.ktor.locations.post
 import io.ktor.response.*
 import io.ktor.routing.*
 import me.fishhawk.lisu.library.Library
-import me.fishhawk.lisu.model.MetadataDetailDto
 import me.fishhawk.lisu.provider.ProviderManager
 
 @OptIn(KtorExperimentalLocationsAPI::class)
 private object LibraryLocation {
     @Location("/library/search")
     data class Search(val page: Int, val keywords: String)
+
+    @Location("/library/random-manga")
+    object RandomManga
 
     @Location("/library/manga/{providerId}/{mangaId}")
     data class Manga(val providerId: String, val mangaId: String)
@@ -29,6 +31,11 @@ fun Route.libraryRoutes(
     get<LibraryLocation.Search> { loc ->
         val mangaList = library.search(loc.page, loc.keywords)
         call.respond(mangaList)
+    }
+
+    get<LibraryLocation.RandomManga> {
+        val manga = library.getRandomManga().get()
+        call.respond(manga)
     }
 
     post<LibraryLocation.Manga> { loc ->

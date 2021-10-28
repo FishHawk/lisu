@@ -20,6 +20,13 @@ class Library(private val path: Path) {
             .toList()
     }
 
+    fun getRandomManga(): Manga {
+        return path.listDirectory()
+            .flatMap { it.listDirectory() }
+            .random()
+            .let { Manga(it) }
+    }
+
     fun hasManga(providerId: String, mangaId: String) = getManga(providerId, mangaId) != null
 
     fun createManga(providerId: String, mangaId: String): Manga? {
