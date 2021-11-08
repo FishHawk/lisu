@@ -107,6 +107,10 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
     }
 
     get<ProviderLocation.Cover> { loc ->
+        call.response.headers.append(
+            HttpHeaders.CacheControl,
+            CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600).toString()
+        )
         val coverInLibrary = library.getManga(loc.providerId, loc.mangaId)?.getCover()
         if (coverInLibrary != null) {
             call.respondFile(coverInLibrary)
@@ -146,6 +150,10 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
     }
 
     get<ProviderLocation.Image> { loc ->
+        call.response.headers.append(
+            HttpHeaders.CacheControl,
+            CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600).toString()
+        )
         val imageInLibrary = library.getManga(loc.providerId, loc.mangaId)
             ?.getChapter(loc.collectionId, loc.chapterId)
             ?.getImage(loc.imageId)
