@@ -1,12 +1,12 @@
 package me.fishhawk.lisu.library
 
+import me.fishhawk.lisu.model.Image
+import me.fishhawk.lisu.model.toImage
 import se.sawano.java.text.AlphanumericComparator
-import java.io.File
 import java.nio.file.Path
 import java.util.*
 import kotlin.io.path.exists
 import kotlin.io.path.name
-
 
 fun alphanumericOrder(): Comparator<Path> = object : Comparator<Path> {
     val comparator = AlphanumericComparator(Locale.getDefault())
@@ -16,8 +16,8 @@ fun alphanumericOrder(): Comparator<Path> = object : Comparator<Path> {
 class Chapter(private val path: Path) {
     fun getContent() = path.listImageFiles().sortedWith(alphanumericOrder()).map { it.name }
 
-    fun getImage(name: String): File? {
+    fun getImage(name: String): Image? {
         val imagePath = path.resolve(name)
-        return if (imagePath.exists()) imagePath.toFile() else null
+        return if (imagePath.exists()) imagePath.toImage() else null
     }
 }

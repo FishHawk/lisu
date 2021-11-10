@@ -1,6 +1,6 @@
 package me.fishhawk.lisu.provider.dmzj
 
-import io.ktor.client.statement.*
+import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.provider.BoardModel
@@ -36,7 +36,7 @@ class Dmzj : Provider {
         TODO("Not yet implemented")
     }
 
-    override suspend fun getImage(url: String): HttpResponse {
+    override suspend fun getImage(url: String): Image {
         TODO("Not yet implemented")
     }
 }

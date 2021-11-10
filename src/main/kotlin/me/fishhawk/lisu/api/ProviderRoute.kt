@@ -15,8 +15,10 @@ import io.ktor.util.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.jvm.javaio.*
 import me.fishhawk.lisu.library.Library
+import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MetadataDetailDto
 import me.fishhawk.lisu.model.ProviderDto
+import me.fishhawk.lisu.model.respondImage
 import me.fishhawk.lisu.provider.ProviderManager
 import java.io.File
 
@@ -97,9 +99,8 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
 
             if (manga != null) {
                 mangaDetail.cover?.let {
-                    val response = provider.getImage(it)
-                    val cover = response.receive<ByteArray>()
-                    manga.updateCover(response.contentType(), cover)
+                    val image = provider.getImage(it)
+                    manga.updateCover(image)
                 }
                 manga.updateMetadata(mangaDetail.metadataDetail)
             }
@@ -111,22 +112,18 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
             HttpHeaders.CacheControl,
             CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600).toString()
         )
-        val coverInLibrary = library.getManga(loc.providerId, loc.mangaId)?.getCover()
-        if (coverInLibrary != null) {
-            call.respondFile(coverInLibrary)
-        } else {
-            val provider = manager.providers[loc.providerId].ensureExist("provider")
-            val response = provider.getImage(loc.imageId)
-            call.pipeResponse(response)
-        }
+        val image = library.getManga(loc.providerId, loc.mangaId)?.getCover()
+            ?: manager.providers[loc.providerId].ensureExist("provider")
+                .getImage(loc.imageId)
+        call.respondImage(image)
     }
 
     put<ProviderLocation.Cover> { loc ->
         val manga = library.getManga(loc.providerId, loc.mangaId).ensureExist("manga")
         call.receiveMultipart().forEachPart { part ->
             if (part is PartData.FileItem && part.originalFileName == "cover") {
-                val fileBytes = part.streamProvider().readBytes()
-                manga.updateCover(part.contentType, fileBytes)
+                val cover = Image(part.contentType, part.streamProvider())
+                manga.updateCover(cover)
             }
         }
         call.response.status(HttpStatusCode.NoContent)
@@ -154,26 +151,11 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
             HttpHeaders.CacheControl,
             CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600).toString()
         )
-        val imageInLibrary = library.getManga(loc.providerId, loc.mangaId)
+        val image = library.getManga(loc.providerId, loc.mangaId)
             ?.getChapter(loc.collectionId, loc.chapterId)
             ?.getImage(loc.imageId)
-        if (imageInLibrary != null) {
-            call.respondFile(imageInLibrary)
-        } else {
-            val provider = manager.providers[loc.providerId].ensureExist("provider")
-            val response = provider.getImage(loc.imageId)
-            call.pipeResponse(response)
-        }
-    }
-}
-
-private suspend fun ApplicationCall.pipeResponse(response: HttpResponse) {
-    try {
-        val readChannel = response.receive<ByteReadChannel>()
-        respondOutputStream(response.contentType()) {
-            readChannel.toInputStream().copyTo(this)
-        }
-    } catch (e: Throwable) {
-        println(e)
+            ?: manager.providers[loc.providerId].ensureExist("provider")
+                .getImage(loc.imageId)
+        call.respondImage(image)
     }
 }

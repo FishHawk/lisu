@@ -48,9 +48,8 @@ private suspend fun download(provider: Provider, manga: Manga) {
     val mangaDetail = provider.getManga(manga.id)
     mangaDetail.cover?.let {
         if (!manga.hasCover()) {
-            val response = provider.getImage(it)
-            val cover = response.receive<ByteArray>()
-            manga.updateCover(response.contentType(), cover)
+            val cover = provider.getImage(it)
+            manga.updateCover(cover)
         }
     }
     if (!manga.hasMetadata()) {

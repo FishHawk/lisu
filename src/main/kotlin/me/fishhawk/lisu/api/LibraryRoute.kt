@@ -1,7 +1,6 @@
 package me.fishhawk.lisu.api
 
 import io.ktor.application.*
-import io.ktor.client.call.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
@@ -46,9 +45,8 @@ fun Route.libraryRoutes(
 
         val mangaDetail = provider.getManga(loc.mangaId).ensureExist("manga")
         mangaDetail.cover?.let {
-            val response = provider.getImage(it)
-            val cover = response.receive<ByteArray>()
-            manga.updateCover(response.contentType(), cover)
+            val cover = provider.getImage(it)
+            manga.updateCover(cover)
         }
         manga.updateMetadata(mangaDetail.metadataDetail)
     }

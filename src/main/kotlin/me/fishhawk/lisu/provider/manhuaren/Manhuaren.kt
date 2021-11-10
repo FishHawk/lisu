@@ -1,8 +1,12 @@
 package me.fishhawk.lisu.provider.manhuaren
 
 import io.ktor.client.call.*
+import io.ktor.http.*
+import io.ktor.utils.io.*
+import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.serialization.json.*
 import me.fishhawk.lisu.model.ChapterDto
+import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.provider.Board
@@ -124,5 +128,10 @@ class Manhuaren : Provider {
             }
         }
 
-    override suspend fun getImage(url: String) = api.getImage(url)
+    override suspend fun getImage(url: String) =
+        api.getImage(url).let { Image(
+            it.contentType(),
+            it.receive<ByteReadChannel>().toInputStream()
+        )
+    }
 }

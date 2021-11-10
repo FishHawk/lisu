@@ -1,6 +1,6 @@
 package me.fishhawk.lisu.provider
 
-import io.ktor.client.statement.*
+import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
 import java.net.URL
@@ -27,5 +27,5 @@ interface Provider {
 
     suspend fun getContent(mangaId: String, collectionId: String, chapterId: String): List<String>
 
-    suspend fun getImage(url: String): HttpResponse
+    suspend fun getImage(url: String): Image
 }

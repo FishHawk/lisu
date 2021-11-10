@@ -124,19 +124,20 @@ class Manga(private val path: Path) {
         return covers.isNotEmpty()
     }
 
-    fun getCover(): File? {
+    fun getCover(): Image? {
         val images = path.listImageFiles()
         val covers = images.filter { it.name == "cover" }.toList()
         val coverPath = covers.firstOrNull() ?: images.firstOrNull()
-        return coverPath?.toFile()
+        return coverPath?.toImage()
     }
 
-    fun updateCover(contentType: ContentType?, cover: ByteArray) {
-        val ext =
-            if (contentType == null || contentType.withoutParameters().match(ContentType.Image.Any)) "png"
-            else contentType.fileExtensions().first()
+    fun updateCover(cover: Image) {
+        val ext = cover.mime.let {
+            if (it == null || it.withoutParameters().match(ContentType.Image.Any)) "png"
+            else it.fileExtensions().first()
+        }
         val coverFile = path.resolve("cover.$ext").toFile()
-        coverFile.writeBytes(cover)
+        cover.stream.copyTo(coverFile.outputStream())
     }
 
     fun getChapter(collectionId: String, chapterId: String): Chapter? {
