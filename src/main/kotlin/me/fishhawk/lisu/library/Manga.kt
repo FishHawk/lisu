@@ -1,32 +1,11 @@
 package me.fishhawk.lisu.library
 
 import io.ktor.http.*
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import me.fishhawk.lisu.model.*
-import java.io.File
-import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.*
-
-// hack, see https://stackoverflow.com/questions/48448000/kotlins-extension-method-stream-tolist-is-missing
-import kotlin.streams.toList
-
-fun Path.listImageFiles(): List<Path> = Files.list(this).filter { it.isImageFile() }.toList()
-
-fun Path.listDirectory(): List<Path> = Files.list(this).filter { it.isDirectory() }.toList()
-
-private val imageExtensions = listOf("bmp", "jpeg", "jpg", "png", "gif", "webp")
-fun Path.isImageFile() = isRegularFile() && extension.lowercase() in imageExtensions
-
-@Serializable
-data class SearchEntry(
-    val title: String? = null,
-    val authors: List<String>? = null,
-    val tags: Map<String, List<String>>? = null
-)
-
 
 class Manga(private val path: Path) {
     val providerId = path.parent.name

@@ -18,7 +18,7 @@ import kotlinx.serialization.json.Json
 import me.fishhawk.lisu.api.libraryRoutes
 import me.fishhawk.lisu.api.providerRoutes
 import me.fishhawk.lisu.api.systemRoutes
-import me.fishhawk.lisu.library.Library
+import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.provider.ProviderManager
 import kotlin.io.path.Path
 
@@ -28,15 +28,15 @@ fun main(args: Array<String>) {
     val port by parser.option(ArgType.Int, shortName = "p", description = "Backend port").default(8080)
     parser.parse(args)
 
-    val library = Library(Path(libraryPath))
-    val manager = ProviderManager()
+    val libraryManager = LibraryManager(Path(libraryPath))
+    val providerManager = ProviderManager()
 
-    embeddedServer(Netty, port) { lisuModule(library, manager) }.start(wait = true)
+    embeddedServer(Netty, port) { lisuModule(libraryManager, providerManager) }.start(wait = true)
 }
 
 private fun Application.lisuModule(
-    library: Library,
-    manager: ProviderManager
+    libraryManager: LibraryManager,
+    providerManager: ProviderManager
 ) {
     install(Locations)
     install(ContentNegotiation) {
@@ -58,8 +58,8 @@ private fun Application.lisuModule(
         intercept(ApplicationCallPipeline.Call) {
             application.log.info("${call.request.httpMethod.value} ${call.request.uri}")
         }
-        libraryRoutes(library, manager)
-        providerRoutes(library, manager)
+        libraryRoutes(libraryManager, providerManager)
+        providerRoutes(libraryManager, providerManager)
         systemRoutes()
     }
 }

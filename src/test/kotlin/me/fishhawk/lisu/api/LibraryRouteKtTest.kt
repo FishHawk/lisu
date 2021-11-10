@@ -7,13 +7,13 @@ import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.routing.*
 import io.ktor.server.testing.*
-import me.fishhawk.lisu.library.Library
+import me.fishhawk.lisu.library.LibraryX
 import me.fishhawk.lisu.provider.ProviderManager
 import kotlin.io.path.Path
 
 class LibraryRouteKtTest : DescribeSpec({
     describe("Router test: provider") {
-        val library = Library(Path("/home/wh/Projects/temp"))
+        val library = LibraryX(Path("/home/wh/Projects/temp"))
         val manager = ProviderManager()
 
         fun Application.libraryTestModule() {

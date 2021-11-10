@@ -1,8 +1,6 @@
 package me.fishhawk.lisu.api
 
 import io.ktor.application.*
-import io.ktor.client.call.*
-import io.ktor.client.statement.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.content.*
@@ -12,9 +10,7 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.*
-import io.ktor.utils.io.*
-import io.ktor.utils.io.jvm.javaio.*
-import me.fishhawk.lisu.library.Library
+import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MetadataDetailDto
 import me.fishhawk.lisu.model.ProviderDto
@@ -64,15 +60,15 @@ private object ProviderLocation {
 }
 
 @OptIn(KtorExperimentalLocationsAPI::class)
-fun Route.providerRoutes(library: Library, manager: ProviderManager) {
+fun Route.providerRoutes(libraryManager: LibraryManager, providerManager: ProviderManager) {
     get("/provider") {
-        call.respond(manager.providers.values.map {
+        call.respond(providerManager.providers.values.map {
             ProviderDto(it.id, it.lang, it.boardModels)
         })
     }
 
     get<ProviderLocation.Icon> { loc ->
-        val provider = manager.providers[loc.providerId].ensureExist("provider")
+        val provider = providerManager.providers[loc.providerId].ensureExist("provider")
         val iconURL = provider.icon.ensureExist("icon")
         val iconFile = File(iconURL.file)
         if (iconFile.exists()) call.respondFile(iconFile)
@@ -80,20 +76,20 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
     }
 
     get<ProviderLocation.Search> { loc ->
-        val provider = manager.providers[loc.providerId].ensureExist("provider")
+        val provider = providerManager.providers[loc.providerId].ensureExist("provider")
         call.respond(provider.search(loc.page, loc.keywords))
     }
 
     get<ProviderLocation.Board> { loc ->
-        val provider = manager.providers[loc.providerId].ensureExist("provider")
+        val provider = providerManager.providers[loc.providerId].ensureExist("provider")
         val filters = call.request.queryParameters.toMap().mapValues { it.value.first().toInt() }
         val mangaList = provider.getBoard(loc.boardId, loc.page, filters)
         call.respond(mangaList)
     }
 
     get<ProviderLocation.Manga> { loc ->
-        val manga = library.getManga(loc.providerId, loc.mangaId)
-        manager.providers[loc.providerId]?.let { provider ->
+        val manga = libraryManager.getLibrary(loc.providerId)?.getManga(loc.mangaId)
+        providerManager.providers[loc.providerId]?.let { provider ->
             val mangaDetail = provider.getManga(loc.mangaId)
             call.respond(mangaDetail.copy(inLibrary = manga != null))
 
@@ -112,14 +108,15 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
             HttpHeaders.CacheControl,
             CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600).toString()
         )
-        val image = library.getManga(loc.providerId, loc.mangaId)?.getCover()
-            ?: manager.providers[loc.providerId].ensureExist("provider")
+
+        val image = libraryManager.getLibrary(loc.providerId)?.getManga(loc.mangaId)?.getCover()
+            ?: providerManager.providers[loc.providerId].ensureExist("provider")
                 .getImage(loc.imageId)
         call.respondImage(image)
     }
 
     put<ProviderLocation.Cover> { loc ->
-        val manga = library.getManga(loc.providerId, loc.mangaId).ensureExist("manga")
+        val manga = libraryManager.getLibrary(loc.providerId)?.getManga(loc.mangaId).ensureExist("manga")
         call.receiveMultipart().forEachPart { part ->
             if (part is PartData.FileItem && part.originalFileName == "cover") {
                 val cover = Image(part.contentType, part.streamProvider())
@@ -130,17 +127,18 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
     }
 
     put<ProviderLocation.Metadata> { loc ->
-        val manga = library.getManga(loc.providerId, loc.mangaId).ensureExist("manga")
+        val manga = libraryManager.getLibrary(loc.providerId)?.getManga(loc.mangaId).ensureExist("manga")
         val metadata = call.receive<MetadataDetailDto>()
         manga.updateMetadata(metadata)
         call.response.status(HttpStatusCode.NoContent)
     }
 
     get<ProviderLocation.Content> { loc ->
-        val content = library.getManga(loc.providerId, loc.mangaId)
+        val content = libraryManager.getLibrary(loc.providerId)
+            ?.getManga(loc.mangaId)
             ?.getChapter(loc.collectionId, loc.chapterId)
             ?.getContent()
-            ?: manager.providers[loc.providerId]
+            ?: providerManager.providers[loc.providerId]
                 ?.getContent(loc.mangaId, loc.collectionId, loc.chapterId)
             ?: throw NotFoundException()
         call.respond(content)
@@ -151,10 +149,11 @@ fun Route.providerRoutes(library: Library, manager: ProviderManager) {
             HttpHeaders.CacheControl,
             CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600).toString()
         )
-        val image = library.getManga(loc.providerId, loc.mangaId)
+        val image = libraryManager.getLibrary(loc.providerId)
+            ?.getManga(loc.mangaId)
             ?.getChapter(loc.collectionId, loc.chapterId)
             ?.getImage(loc.imageId)
-            ?: manager.providers[loc.providerId].ensureExist("provider")
+            ?: providerManager.providers[loc.providerId].ensureExist("provider")
                 .getImage(loc.imageId)
         call.respondImage(image)
     }

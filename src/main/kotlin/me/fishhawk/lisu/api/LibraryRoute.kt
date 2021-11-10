@@ -7,7 +7,7 @@ import io.ktor.locations.*
 import io.ktor.locations.post
 import io.ktor.response.*
 import io.ktor.routing.*
-import me.fishhawk.lisu.library.Library
+import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.provider.ProviderManager
 
 @OptIn(KtorExperimentalLocationsAPI::class)
@@ -24,22 +24,23 @@ private object LibraryLocation {
 
 @OptIn(KtorExperimentalLocationsAPI::class)
 fun Route.libraryRoutes(
-    library: Library,
-    manager: ProviderManager
+    libraryManager: LibraryManager,
+    providerManager: ProviderManager
 ) {
     get<LibraryLocation.Search> { loc ->
-        val mangaList = library.search(loc.page, loc.keywords)
+        val mangaList = libraryManager.search(loc.page, loc.keywords)
         call.respond(mangaList)
     }
 
     get<LibraryLocation.RandomManga> {
-        val manga = library.getRandomManga().get()
+        val manga = libraryManager.getRandomManga().get()
         call.respond(manga)
     }
 
     post<LibraryLocation.Manga> { loc ->
-        val provider = manager.providers[loc.providerId].ensureExist("provider")
-        val manga = library.createManga(loc.providerId, loc.mangaId)
+        val provider = providerManager.providers[loc.providerId].ensureExist("provider")
+        val manga = libraryManager.getLibrary(loc.providerId).ensureExist("library")
+            .createManga(loc.mangaId)
             ?: return@post call.respondText(status = HttpStatusCode.Conflict, text = "conflict")
         call.respondText(status = HttpStatusCode.OK, text = "success")
 
@@ -52,8 +53,10 @@ fun Route.libraryRoutes(
     }
 
     delete<LibraryLocation.Manga> { loc ->
-        if (library.deleteManga(loc.providerId, loc.mangaId))
-            call.respondText(status = HttpStatusCode.OK, text = "success")
+        if (
+            libraryManager.getLibrary(loc.providerId).ensureExist("library")
+                .deleteManga(loc.mangaId)
+        ) call.respondText(status = HttpStatusCode.OK, text = "success")
         else throw NotFoundException("")
     }
 }
