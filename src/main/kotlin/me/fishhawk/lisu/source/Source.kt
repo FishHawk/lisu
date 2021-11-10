@@ -1,4 +1,4 @@
-package me.fishhawk.lisu.provider
+package me.fishhawk.lisu.source
 
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
@@ -13,7 +13,7 @@ enum class Board(val id: String) {
     Category("category")
 }
 
-interface Provider {
+interface Source {
     val id: String
     val lang: String
     val icon: URL?

@@ -1,13 +1,13 @@
-package me.fishhawk.lisu.provider.dmzj
+package me.fishhawk.lisu.source.dmzj
 
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
-import me.fishhawk.lisu.provider.BoardModel
-import me.fishhawk.lisu.provider.Provider
+import me.fishhawk.lisu.source.BoardModel
+import me.fishhawk.lisu.source.Source
 import java.net.URL
 
-class Dmzj : Provider {
+class Dmzj : Source {
     override val id: String = "动漫之家"
     override val lang: String = "zh"
     override val icon: URL? = this::class.java.getResource("icon.png")

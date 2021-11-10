@@ -1,14 +1,15 @@
 package me.fishhawk.lisu.api
 
 import io.ktor.application.*
-import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.locations.*
 import io.ktor.locations.post
 import io.ktor.response.*
 import io.ktor.routing.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import me.fishhawk.lisu.library.LibraryManager
-import me.fishhawk.lisu.provider.ProviderManager
+import me.fishhawk.lisu.source.SourceManager
 
 @OptIn(KtorExperimentalLocationsAPI::class)
 private object LibraryLocation {
@@ -25,7 +26,7 @@ private object LibraryLocation {
 @OptIn(KtorExperimentalLocationsAPI::class)
 fun Route.libraryRoutes(
     libraryManager: LibraryManager,
-    providerManager: ProviderManager
+    sourceManager: SourceManager
 ) {
     get<LibraryLocation.Search> { loc ->
         val mangaList = libraryManager.search(loc.page, loc.keywords)
@@ -38,25 +39,27 @@ fun Route.libraryRoutes(
     }
 
     post<LibraryLocation.Manga> { loc ->
-        val provider = providerManager.providers[loc.providerId].ensureExist("provider")
-        val manga = libraryManager.getLibrary(loc.providerId).ensureExist("library")
-            .createManga(loc.mangaId)
+        val source = sourceManager.getSource(loc.providerId).ensure("provider")
+        val manga = libraryManager.createLibrary(loc.providerId)
+            ?.createManga(loc.mangaId)
             ?: return@post call.respondText(status = HttpStatusCode.Conflict, text = "conflict")
         call.respondText(status = HttpStatusCode.OK, text = "success")
 
-        val mangaDetail = provider.getManga(loc.mangaId).ensureExist("manga")
-        mangaDetail.cover?.let {
-            val cover = provider.getImage(it)
-            manga.updateCover(cover)
+        val mangaDetail = source.getManga(loc.mangaId).ensure("manga")
+        withContext(Dispatchers.IO) {
+            manga.updateMetadata(mangaDetail.metadataDetail)
+            mangaDetail.cover?.let {
+                val cover = source.getImage(it)
+                manga.updateCover(cover)
+            }
         }
-        manga.updateMetadata(mangaDetail.metadataDetail)
     }
 
     delete<LibraryLocation.Manga> { loc ->
         if (
-            libraryManager.getLibrary(loc.providerId).ensureExist("library")
+            libraryManager.getLibrary(loc.providerId).ensure("library")
                 .deleteManga(loc.mangaId)
         ) call.respondText(status = HttpStatusCode.OK, text = "success")
-        else throw NotFoundException("")
+        else throw HttpException.NotFound("manga")
     }
 }

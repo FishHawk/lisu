@@ -1,7 +1,7 @@
 package me.fishhawk.lisu.model
 
 import kotlinx.serialization.Serializable
-import me.fishhawk.lisu.provider.BoardModel
+import me.fishhawk.lisu.source.BoardModel
 
 @Serializable
 data class ProviderDto(

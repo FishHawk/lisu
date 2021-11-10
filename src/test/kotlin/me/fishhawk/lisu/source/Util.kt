@@ -1,4 +1,4 @@
-package me.fishhawk.lisu.provider.manhuaren
+package me.fishhawk.lisu.source.manhuaren
 
 import io.ktor.client.call.*
 import io.ktor.client.statement.*

@@ -5,6 +5,8 @@ import java.nio.file.Path
 import kotlin.io.path.*
 
 class Library(private val path: Path) {
+    val id = path.name
+
     fun search(page: Int, keywords: String): List<MangaDto> {
         val filters = keywords.split(';').mapNotNull { Filter.fromToken(it.trim()) }
         val pageSize = 100
@@ -27,13 +29,13 @@ class Library(private val path: Path) {
 
     fun createManga(id: String): Manga? {
         val mangaPath = getMangaPath(id)
-        return if (mangaPath.isDirectory()) null
+        return if (mangaPath.exists()) null
         else Manga(mangaPath.createDirectories())
     }
 
     fun deleteManga(id: String): Boolean {
         val mangaPath = getMangaPath(id)
-        return if (mangaPath.isDirectory()) false
+        return if (!mangaPath.isDirectory()) false
         else {
             mangaPath.toFile().deleteRecursively()
             true
@@ -78,7 +80,15 @@ class LibraryManager(private val path: Path) {
             .let { Manga(it) }
     }
 
+    fun listLibraries() = path.listDirectory().map { Library(it) }
+
     fun getLibrary(id: String): Library? {
+        return path.resolve(id).let {
+            if (it.isDirectory()) Library(it) else null
+        }
+    }
+
+    fun createLibrary(id: String): Library? {
         return path.resolve(id).let {
             if (it.notExists()) it.createDirectory()
             if (it.isDirectory()) Library(it) else null

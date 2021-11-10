@@ -1,4 +1,4 @@
-package me.fishhawk.lisu.provider.dmzj
+package me.fishhawk.lisu.source.dmzj
 
 import io.ktor.client.*
 import io.ktor.client.call.*

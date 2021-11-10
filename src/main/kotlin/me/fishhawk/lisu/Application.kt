@@ -15,11 +15,12 @@ import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import kotlinx.cli.optional
 import kotlinx.serialization.json.Json
+import me.fishhawk.lisu.api.HttpException
 import me.fishhawk.lisu.api.libraryRoutes
 import me.fishhawk.lisu.api.providerRoutes
 import me.fishhawk.lisu.api.systemRoutes
 import me.fishhawk.lisu.library.LibraryManager
-import me.fishhawk.lisu.provider.ProviderManager
+import me.fishhawk.lisu.source.SourceManager
 import kotlin.io.path.Path
 
 fun main(args: Array<String>) {
@@ -29,14 +30,14 @@ fun main(args: Array<String>) {
     parser.parse(args)
 
     val libraryManager = LibraryManager(Path(libraryPath))
-    val providerManager = ProviderManager()
+    val sourceManager = SourceManager()
 
-    embeddedServer(Netty, port) { lisuModule(libraryManager, providerManager) }.start(wait = true)
+    embeddedServer(Netty, port) { lisuModule(libraryManager, sourceManager) }.start(wait = true)
 }
 
 private fun Application.lisuModule(
     libraryManager: LibraryManager,
-    providerManager: ProviderManager
+    sourceManager: SourceManager
 ) {
     install(Locations)
     install(ContentNegotiation) {
@@ -52,14 +53,17 @@ private fun Application.lisuModule(
         exception<Throwable> { cause ->
             call.respondText(cause.localizedMessage, status = HttpStatusCode.InternalServerError)
         }
+        exception<HttpException> { cause ->
+            call.respondText(cause.localizedMessage, status = cause.status)
+        }
     }
 
     routing {
         intercept(ApplicationCallPipeline.Call) {
             application.log.info("${call.request.httpMethod.value} ${call.request.uri}")
         }
-        libraryRoutes(libraryManager, providerManager)
-        providerRoutes(libraryManager, providerManager)
+        libraryRoutes(libraryManager, sourceManager)
+        providerRoutes(libraryManager, sourceManager)
         systemRoutes()
     }
 }

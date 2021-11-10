@@ -1,7 +1,6 @@
-package me.fishhawk.lisu.provider.manhuaren
+package me.fishhawk.lisu.source.manhuaren
 
 import io.ktor.client.call.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.jvm.javaio.*
@@ -12,15 +11,15 @@ import me.fishhawk.lisu.model.ChapterDto
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
-import me.fishhawk.lisu.provider.Board
-import me.fishhawk.lisu.provider.BoardModel
-import me.fishhawk.lisu.provider.Provider
+import me.fishhawk.lisu.source.Board
+import me.fishhawk.lisu.source.BoardModel
+import me.fishhawk.lisu.source.Source
 import java.net.URL
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class Manhuaren : Provider {
+class Manhuaren : Source {
     override val id: String = "漫画人"
     override val lang: String = "zh"
     override val icon: URL? = this::class.java.getResource("icon.png")

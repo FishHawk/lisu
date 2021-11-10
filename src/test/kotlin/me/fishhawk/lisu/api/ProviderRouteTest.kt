@@ -11,7 +11,7 @@ import io.ktor.serialization.*
 import io.ktor.server.testing.*
 import kotlinx.serialization.json.Json
 import me.fishhawk.lisu.library.LibraryX
-import me.fishhawk.lisu.provider.ProviderManager
+import me.fishhawk.lisu.source.SourceManager
 import kotlin.io.path.Path
 
 fun Application.setup() {
@@ -27,7 +27,7 @@ fun Application.setup() {
 class ProviderRouteTest : DescribeSpec({
     describe("Router test: provider") {
         val library = LibraryX(Path("/home/wh/Projects/temp"))
-        val manager = ProviderManager()
+        val manager = SourceManager()
 
         fun Application.providerTestModule() {
             setup()

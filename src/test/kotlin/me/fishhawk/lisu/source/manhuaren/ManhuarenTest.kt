@@ -1,14 +1,8 @@
-package me.fishhawk.lisu.provider.manhuaren
+package me.fishhawk.lisu.source.manhuaren
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
-import io.ktor.client.call.*
-import io.ktor.client.statement.*
-import io.ktor.util.cio.*
-import io.ktor.utils.io.*
-import kotlin.io.path.Path
-import kotlin.io.path.createDirectories
 
 class ManhuarenTest : DescribeSpec({
     describe("Provider test: manhuaren") {
