@@ -11,6 +11,7 @@ import io.ktor.routing.*
 import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.fishhawk.lisu.library.Library
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MetadataDetailDto
@@ -69,7 +70,7 @@ fun Route.providerRoutes(libraryManager: LibraryManager, sourceManager: SourceMa
         val remoteProviders = sources.map { ProviderDto(it.id, it.lang, it.boardModels) }
         val localProviders = libraries
             .filter { library -> sources.none { source -> source.id == library.id } }
-            .map { ProviderDto(it.id, "local", emptyMap()) }
+            .map { ProviderDto(it.id, Library.lang, Library.boardModels) }
         call.respond(remoteProviders + localProviders)
     }
 
@@ -93,6 +94,8 @@ fun Route.providerRoutes(libraryManager: LibraryManager, sourceManager: SourceMa
         val filters = call.request.queryParameters.toMap().mapValues { it.value.first().toInt() }
         val mangas = sourceManager.getSource(loc.providerId)
             ?.getBoard(loc.boardId, loc.page, filters)
+            ?: libraryManager.getLibrary(loc.providerId)
+                ?.getBoard(loc.boardId, loc.page)
             ?: throw HttpException.NotFound("provider")
         call.respond(mangas)
     }

@@ -1,6 +1,12 @@
 package me.fishhawk.lisu.library
 
+import io.ktor.client.call.*
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import me.fishhawk.lisu.model.MangaDto
+import me.fishhawk.lisu.source.Board
+import me.fishhawk.lisu.source.BoardModel
 import java.nio.file.Path
 import kotlin.io.path.*
 
@@ -25,6 +31,12 @@ class Library(private val path: Path) {
             .toList()
     }
 
+    fun getBoard(boardId: String, page: Int): List<MangaDto> =
+        when (boardId) {
+            Board.Latest.id -> search(page, "")
+            else -> null
+        } ?: throw Error("board not found")
+
     fun createManga(id: String): Manga? {
         return getMangaPath(id)
             .takeIf { it.notExists() }
@@ -48,5 +60,11 @@ class Library(private val path: Path) {
 
     private fun getMangaPath(id: String): Path {
         return path.resolve(id)
+    }
+
+    companion object {
+        val lang = "local"
+        val boardModels: Map<String, BoardModel> =
+            mapOf(Board.Latest.id to emptyMap())
     }
 }
