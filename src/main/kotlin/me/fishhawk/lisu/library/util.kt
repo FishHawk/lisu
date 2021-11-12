@@ -1,11 +1,14 @@
 package me.fishhawk.lisu.library
 
 import kotlinx.serialization.Serializable
+import se.sawano.java.text.AlphanumericComparator
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.*
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
+import kotlin.io.path.name
 
 // hack, see https://stackoverflow.com/questions/48448000/kotlins-extension-method-stream-tolist-is-missing
 import kotlin.streams.toList
@@ -13,6 +16,15 @@ import kotlin.streams.toList
 fun Path.listImageFiles(): List<Path> = Files.list(this).filter { it.isImageFile() }.toList()
 
 fun Path.listDirectory(): List<Path> = Files.list(this).filter { it.isDirectory() }.toList()
+
+fun Iterable<Path>.sortedAlphanumeric(): List<Path> {
+    return sortedWith(alphanumericOrder())
+}
+
+fun alphanumericOrder(): Comparator<Path> = object : Comparator<Path> {
+    val comparator = AlphanumericComparator(Locale.getDefault())
+    override fun compare(p0: Path, p1: Path): Int = comparator.compare(p0.name, p1.name)
+}
 
 private val imageExtensions = listOf("bmp", "jpeg", "jpg", "png", "gif", "webp")
 fun Path.isImageFile() = isRegularFile() && extension.lowercase() in imageExtensions
@@ -43,7 +55,12 @@ class Filter(
     }
 
     companion object {
-        fun fromToken(toke: String): Filter? {
+        fun fromKeywords(keywords: String): List<Filter> {
+            return keywords.split(';')
+                .mapNotNull { fromToken(it.trim()) }
+        }
+
+        private fun fromToken(toke: String): Filter? {
             var token = toke
 
             if (token.isBlank()) return null

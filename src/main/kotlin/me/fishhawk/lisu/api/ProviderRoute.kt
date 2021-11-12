@@ -103,12 +103,11 @@ fun Route.providerRoutes(libraryManager: LibraryManager, sourceManager: SourceMa
             val mangaDetail = source.getManga(loc.mangaId)
             call.respond(mangaDetail.copy(inLibrary = manga != null))
 
-            if (manga != null) {
-                withContext(Dispatchers.IO) {
-                    manga.updateMetadata(mangaDetail.metadataDetail)
-                    mangaDetail.cover?.let {
-                        val image = source.getImage(it)
-                        manga.updateCover(image)
+            withContext(Dispatchers.IO) {
+                manga?.takeIf { !it.hasMetadata() }?.updateMetadata(mangaDetail.metadataDetail)
+                manga?.takeIf { !it.hasCover() }?.let {
+                    mangaDetail.cover?.let { cover ->
+                        it.updateCover(source.getImage(cover))
                     }
                 }
             }

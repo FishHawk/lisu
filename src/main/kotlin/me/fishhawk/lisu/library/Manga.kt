@@ -1,7 +1,7 @@
 package me.fishhawk.lisu.library
 
 import io.ktor.http.*
-import kotlinx.coroutines.withContext
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import me.fishhawk.lisu.model.*
@@ -9,23 +9,17 @@ import java.nio.file.Path
 import kotlin.io.path.*
 
 class Manga(private val path: Path) {
-    val providerId = path.parent.name
+    private val providerId = path.parent.name
     val id = path.name
 
     fun getSearchEntry(): SearchEntry {
-        if (!metadataFile.exists()) return SearchEntry(title = id)
-        return try {
-            Json { ignoreUnknownKeys = true }.decodeFromString(
-                SearchEntry.serializer(),
-                metadataFile.readText()
-            ).let { if (it.title == null) it.copy(title = id) else it }
-        } catch (e: SerializationException) {
-            SearchEntry(title = id)
-        }
+        return parseMetadataAs(SearchEntry.serializer())?.let {
+            if (it.title == null) it.copy(title = id) else it
+        } ?: SearchEntry(title = id)
     }
 
     fun get(): MangaDto {
-        val metadata = getMetadata()
+        val metadata = parseMetadataAs(MetadataDto.serializer())
         return MangaDto(
             providerId = providerId,
             id = id,
@@ -38,7 +32,7 @@ class Manga(private val path: Path) {
     }
 
     fun getDetail(): MangaDetailDto {
-        val metadata = getMetadataDetail()
+        val metadata = parseMetadataAs(MetadataDetailDto.serializer())
         val collections = detectCollections(path).ifEmpty { null }
         val chapters = if (collections != null) null else detectChapters(path).ifEmpty { null }
         val previews = if (chapters != null) null else detectPreviews(path).ifEmpty { null }
@@ -66,31 +60,20 @@ class Manga(private val path: Path) {
     private val metadataFile = path.resolve("metadata.json").toFile()
 
     fun hasMetadata(): Boolean {
-        return metadataFile.exists()
+        return metadataFile.isFile
     }
 
-    private fun getMetadata(): MetadataDto? {
-        if (!metadataFile.exists()) return null
-        return try {
-            Json { ignoreUnknownKeys = true }.decodeFromString(
-                MetadataDto.serializer(),
-                metadataFile.readText()
-            )
-        } catch (e: SerializationException) {
-            null
-        }
-    }
-
-    private fun getMetadataDetail(): MetadataDetailDto? {
-        if (!metadataFile.exists()) return null
-        return try {
-            Json { ignoreUnknownKeys = true }.decodeFromString(
-                MetadataDetailDto.serializer(),
-                metadataFile.readText()
-            )
-        } catch (e: SerializationException) {
-            null
-        }
+    private fun <T> parseMetadataAs(serializer: KSerializer<T>): T? {
+        return metadataFile
+            .takeIf { it.isFile }
+            ?.let {
+                try {
+                    Json { ignoreUnknownKeys = true }
+                        .decodeFromString(serializer, it.readText())
+                } catch (e: SerializationException) {
+                    null
+                }
+            }
     }
 
     fun updateMetadata(metadata: MetadataDetailDto) {
@@ -99,19 +82,22 @@ class Manga(private val path: Path) {
     }
 
     fun hasCover(): Boolean {
-        val images = path.listImageFiles()
-        val covers = images.filter { it.name == "cover" }.toList()
-        return covers.isNotEmpty()
+        return path.listImageFiles()
+            .any { it.name == "cover" }
     }
 
     fun getCover(): Image? {
-        val images = path.listImageFiles()
-        val covers = images.filter { it.name == "cover" }.toList()
-        val coverPath = covers.firstOrNull() ?: images.firstOrNull()
-        return coverPath?.toImage()
+        return path.listImageFiles()
+            .let { images ->
+                images.firstOrNull { it.name == "cover" }
+                    ?: images.sortedAlphanumeric().firstOrNull()
+            }?.toImage()
     }
 
     fun updateCover(cover: Image) {
+        path.listImageFiles()
+            .filter { it.name == "cover" }
+            .onEach { it.deleteExisting() }
         val ext = cover.mime.let {
             if (it == null || it.withoutParameters().match(ContentType.Image.Any)) "png"
             else it.fileExtensions().first()

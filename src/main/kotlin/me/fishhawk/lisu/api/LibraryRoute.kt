@@ -40,7 +40,7 @@ fun Route.libraryRoutes(
 
     post<LibraryLocation.Manga> { loc ->
         val source = sourceManager.getSource(loc.providerId).ensure("provider")
-        val manga = libraryManager.createLibrary(loc.providerId)
+        val manga = libraryManager.getOrCreateLibrary(loc.providerId)
             ?.createManga(loc.mangaId)
             ?: return@post call.respondText(status = HttpStatusCode.Conflict, text = "conflict")
         call.respondText(status = HttpStatusCode.OK, text = "success")
