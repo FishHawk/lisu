@@ -19,6 +19,7 @@ import me.fishhawk.lisu.api.HttpException
 import me.fishhawk.lisu.api.libraryRoutes
 import me.fishhawk.lisu.api.providerRoutes
 import me.fishhawk.lisu.api.systemRoutes
+import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.source.SourceManager
 import kotlin.io.path.Path
@@ -31,13 +32,17 @@ fun main(args: Array<String>) {
 
     val libraryManager = LibraryManager(Path(libraryPath))
     val sourceManager = SourceManager()
+    val downloader = Downloader(libraryManager, sourceManager)
 
-    embeddedServer(Netty, port) { lisuModule(libraryManager, sourceManager) }.start(wait = true)
+    embeddedServer(Netty, port) {
+        lisuModule(libraryManager, sourceManager, downloader)
+    }.start(wait = true)
 }
 
 private fun Application.lisuModule(
     libraryManager: LibraryManager,
-    sourceManager: SourceManager
+    sourceManager: SourceManager,
+    downloader: Downloader
 ) {
     install(Locations)
     install(ContentNegotiation) {
@@ -62,7 +67,7 @@ private fun Application.lisuModule(
         intercept(ApplicationCallPipeline.Call) {
             application.log.info("${call.request.httpMethod.value} ${call.request.uri}")
         }
-        libraryRoutes(libraryManager, sourceManager)
+        libraryRoutes(libraryManager, sourceManager, downloader)
         providerRoutes(libraryManager, sourceManager)
         systemRoutes()
     }

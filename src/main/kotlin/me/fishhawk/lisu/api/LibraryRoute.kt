@@ -8,6 +8,7 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.source.SourceManager
 
@@ -26,7 +27,8 @@ private object LibraryLocation {
 @OptIn(KtorExperimentalLocationsAPI::class)
 fun Route.libraryRoutes(
     libraryManager: LibraryManager,
-    sourceManager: SourceManager
+    sourceManager: SourceManager,
+    downloader: Downloader
 ) {
     get<LibraryLocation.Search> { loc ->
         val mangaList = libraryManager.search(loc.page, loc.keywords)
@@ -48,10 +50,8 @@ fun Route.libraryRoutes(
         val mangaDetail = source.getManga(loc.mangaId).ensure("manga")
         withContext(Dispatchers.IO) {
             manga.updateMetadata(mangaDetail.metadataDetail)
-            mangaDetail.cover?.let {
-                val cover = source.getImage(it)
-                manga.updateCover(cover)
-            }
+            mangaDetail.cover?.let { manga.updateCover(source.getImage(it)) }
+            downloader.add(loc.providerId, loc.mangaId)
         }
     }
 
