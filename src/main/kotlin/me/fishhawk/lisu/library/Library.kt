@@ -1,9 +1,5 @@
 package me.fishhawk.lisu.library
 
-import io.ktor.client.call.*
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.source.Board
 import me.fishhawk.lisu.source.BoardModel
@@ -63,7 +59,7 @@ class Library(private val path: Path) {
     }
 
     companion object {
-        val lang = "local"
+        const val lang = "local"
         val boardModels: Map<String, BoardModel> =
             mapOf(Board.Latest.id to emptyMap())
     }

@@ -77,6 +77,7 @@ class Manga(private val path: Path) {
     }
 
     fun updateMetadata(metadata: MetadataDetailDto) {
+        assert(path.isDirectory())
         val json = Json.encodeToString(MetadataDetailDto.serializer(), metadata)
         metadataFile.writeText(json)
     }
@@ -95,21 +96,37 @@ class Manga(private val path: Path) {
     }
 
     fun updateCover(cover: Image) {
+        assert(path.isDirectory())
         path.listImageFiles()
             .filter { it.name == "cover" }
             .onEach { it.deleteExisting() }
-        val ext = cover.mime.let {
-            if (it == null || it.withoutParameters().match(ContentType.Image.Any)) "png"
-            else it.fileExtensions().first()
-        }
-        val coverFile = path.resolve("cover.$ext").toFile()
+        val coverFile = path.resolve("cover.${cover.ext}").toFile()
         cover.stream.copyTo(coverFile.outputStream())
     }
 
-    fun getChapter(collectionId: String, chapterId: String): Chapter? {
-        val chapterPath = path.resolve(collectionId.ifBlank { "" }).resolve(chapterId.ifBlank { "" })
-        return if (chapterPath.exists()) Chapter(chapterPath) else null
+    private fun getChapterPath(collectionId: String, chapterId: String): Path {
+        return path.resolve(collectionId.ifBlank { "" })
+            .resolve(chapterId.ifBlank { "" })
     }
+
+    fun getChapter(collectionId: String, chapterId: String): Chapter? {
+        return getChapterPath(collectionId, chapterId)
+            .takeIf { it.isDirectory() }
+            ?.let { Chapter(collectionId, chapterId, it) }
+    }
+
+    private fun createChapter(collectionId: String, chapterId: String): Chapter? {
+        assert(path.isDirectory())
+        return getChapterPath(collectionId, chapterId)
+            .takeIf { it.notExists() }
+            ?.let {
+                Chapter(collectionId, chapterId, it.createDirectories())
+                    .apply { unfinished = true }
+            }
+    }
+
+    fun getOrCreateChapter(collectionId: String, chapterId: String): Chapter? =
+        getChapter(collectionId, chapterId) ?: createChapter(collectionId, chapterId)
 }
 
 private fun detectCollections(path: Path): Map<String, List<ChapterDto>> {

@@ -102,7 +102,7 @@ fun Route.providerRoutes(libraryManager: LibraryManager, sourceManager: SourceMa
 
     get<ProviderLocation.Manga> { loc ->
         val manga = libraryManager.getLibrary(loc.providerId)?.getManga(loc.mangaId)
-        sourceManager.getSource(loc.providerId)?.let { source ->
+        sourceManager.getSource(loc.providerId)?.also { source ->
             val mangaDetail = source.getManga(loc.mangaId)
             call.respond(mangaDetail.copy(inLibrary = manga != null))
 
@@ -155,6 +155,7 @@ fun Route.providerRoutes(libraryManager: LibraryManager, sourceManager: SourceMa
         val content = libraryManager.getLibrary(loc.providerId)
             ?.getManga(loc.mangaId)
             ?.getChapter(loc.collectionId, loc.chapterId)
+            ?.takeIf { !it.unfinished }
             ?.getContent()
             ?: sourceManager.getSource(loc.providerId)
                 ?.getContent(loc.mangaId, loc.collectionId, loc.chapterId)

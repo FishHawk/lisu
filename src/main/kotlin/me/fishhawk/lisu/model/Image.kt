@@ -9,7 +9,12 @@ import java.nio.file.Path
 data class Image(
     val mime: ContentType?,
     val stream: InputStream
-)
+) {
+    val ext = mime.let {
+        if (it == null || it.withoutParameters().match(ContentType.Image.Any)) "png"
+        else it.fileExtensions().first()
+    }
+}
 
 fun Path.toImage() = Image(null, this.toFile().inputStream())
 
