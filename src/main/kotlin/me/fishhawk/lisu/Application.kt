@@ -45,12 +45,14 @@ private fun Application.lisuModule(
     downloader: Downloader
 ) {
     install(Locations)
+
     install(ContentNegotiation) {
         json(Json {
             prettyPrint = true
             isLenient = true
         })
     }
+
     install(StatusPages) {
         exception<NotFoundException> { cause ->
             call.respondText(cause.localizedMessage, status = HttpStatusCode.NotFound)
@@ -63,10 +65,16 @@ private fun Application.lisuModule(
         }
     }
 
-    routing {
-        intercept(ApplicationCallPipeline.Call) {
-            application.log.info("${call.request.httpMethod.value} ${call.request.uri}")
+    install(CallLogging) {
+        format { call ->
+            val status = call.response.status()
+            val httpMethod = call.request.httpMethod.value
+            val uri = call.request.uri
+            "$httpMethod-$status $uri"
         }
+    }
+
+    routing {
         libraryRoutes(libraryManager, sourceManager, downloader)
         providerRoutes(libraryManager, sourceManager)
         systemRoutes()

@@ -1,6 +1,5 @@
 package me.fishhawk.lisu.library
 
-import io.ktor.http.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -9,7 +8,7 @@ import java.nio.file.Path
 import kotlin.io.path.*
 
 class Manga(private val path: Path) {
-    private val providerId = path.parent.name
+    val providerId = path.parent.name
     val id = path.name
 
     fun getSearchEntry(): SearchEntry {

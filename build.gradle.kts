@@ -30,6 +30,9 @@ dependencies {
 
     implementation("se.sawano.java:alphanumeric-comparator:1.4.1")
 
+    val krontabVersion = "0.6.6"
+    implementation("dev.inmo:krontab:$krontabVersion")
+
     val kotestVersion = "4.6.3"
     testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")

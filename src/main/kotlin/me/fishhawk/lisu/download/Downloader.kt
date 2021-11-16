@@ -1,5 +1,7 @@
 package me.fishhawk.lisu.download
 
+import dev.inmo.krontab.builder.buildSchedule
+import dev.inmo.krontab.doInfinity
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import me.fishhawk.lisu.library.Chapter
@@ -8,9 +10,13 @@ import me.fishhawk.lisu.library.Manga
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.source.Source
 import me.fishhawk.lisu.source.SourceManager
+import org.slf4j.LoggerFactory
 
+private val log = LoggerFactory.getLogger("downloader")
+
+@OptIn(DelicateCoroutinesApi::class)
 class Downloader(
-    libraryManager: LibraryManager,
+    private val libraryManager: LibraryManager,
     sourceManager: SourceManager
 ) {
     private val context = newSingleThreadContext("downloader")
@@ -19,6 +25,18 @@ class Downloader(
         sourceManager.listSources()
             .map { Worker(libraryManager, it) }
             .associateBy { it.id }
+
+    private val updater = buildSchedule { hours { at(4) } }
+
+    init {
+        GlobalScope.launch {
+            updater.doInfinity { updateAll() }
+        }
+    }
+
+    private suspend fun updateAll() = withContext(context) {
+        libraryManager.listMangaNeedUpdate().map { add(it.providerId, it.id) }
+    }
 
     suspend fun pause() = withContext(context) {
         workers.values.map { it.pause() }
@@ -57,6 +75,7 @@ private class Worker(
         currentJob = launch {
             while (true) {
                 val mangaId = waitingMangas.firstOrNull() ?: break
+                log.info("Downloading manga: ${source.id} $mangaId")
                 val manga = libraryManager.getLibrary(source.id)?.getManga(mangaId)
                 if (manga == null) {
                     waitingMangas.remove(mangaId)
@@ -64,10 +83,15 @@ private class Worker(
                 }
                 try {
                     val hasChapterError = download(source, manga)
-                    if (hasChapterError) errorMangas[mangaId] = Error("chapter error")
-                    waitingMangas.remove(mangaId)
+                    if (hasChapterError) {
+                        errorMangas[mangaId] = Error("ChapterError")
+                        log.info("Downloading error: ${source.id} $mangaId ChapterError")
+                    }
                 } catch (throwable: Throwable) {
                     errorMangas[mangaId] = throwable
+                    log.info("Downloading error: ${source.id} $mangaId $throwable")
+                } finally {
+                    waitingMangas.remove(mangaId)
                 }
             }
         }

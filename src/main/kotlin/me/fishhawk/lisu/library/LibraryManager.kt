@@ -5,6 +5,13 @@ import java.nio.file.Path
 import kotlin.io.path.*
 
 class LibraryManager(private val path: Path) {
+    fun listMangaNeedUpdate(): List<Manga> {
+        return path.listDirectory()
+            .flatMap { it.listDirectory() }
+            .map { Manga(it) }
+            .filter { it.get().isFinished != true }
+    }
+
     fun search(page: Int, keywords: String): List<MangaDto> {
         val filters = Filter.fromKeywords(keywords)
         val pageSize = 100
