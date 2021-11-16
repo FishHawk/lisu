@@ -59,7 +59,9 @@ fun Route.libraryRoutes(
         if (
             libraryManager.getLibrary(loc.providerId).ensure("library")
                 .deleteManga(loc.mangaId)
-        ) call.respondText(status = HttpStatusCode.OK, text = "success")
-        else throw HttpException.NotFound("manga")
+        ) {
+            downloader.remove(loc.providerId, loc.mangaId)
+            call.respondText(status = HttpStatusCode.OK, text = "success")
+        } else throw HttpException.NotFound("manga")
     }
 }

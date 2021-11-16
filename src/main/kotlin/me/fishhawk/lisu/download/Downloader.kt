@@ -49,6 +49,10 @@ class Downloader(
     suspend fun add(providerId: String, mangaId: String) = withContext(context) {
         workers[providerId]?.add(mangaId)
     }
+
+    suspend fun remove(providerId: String, mangaId: String) = withContext(context) {
+        workers[providerId]?.remove(mangaId)
+    }
 }
 
 private class Worker(
@@ -65,6 +69,11 @@ private class Worker(
         waitingMangas.add(mangaId)
         errorMangas.remove(mangaId)
         if (currentJob == null) start()
+    }
+
+    fun remove(mangaId: String) {
+        waitingMangas.remove(mangaId)
+        errorMangas.remove(mangaId)
     }
 
     suspend fun pause() {
