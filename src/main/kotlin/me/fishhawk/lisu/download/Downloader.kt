@@ -1,7 +1,6 @@
 package me.fishhawk.lisu.download
 
 import kotlinx.coroutines.*
-import kotlinx.coroutines.NonCancellable.onJoin
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.selects.select
 import me.fishhawk.lisu.library.LibraryManager
@@ -81,9 +80,9 @@ private suspend inline fun <T, C : Iterable<T>> C.forEachIndexedParallel(
     val executing = mutableListOf<Deferred<Unit>>()
     forEachIndexed { index, value ->
         executing.add(async { action(index, value) })
-        if (executing.size >= limit) select<Unit> {
-            executing.toList().onEach { it.onJoin { executing.remove(it) } }
-        }
+        if (executing.size >= limit)
+            select<Unit> { executing.onEach { it.onJoin { } } }
+        executing.removeIf { it.isCompleted }
     }
     executing.awaitAll()
 }
