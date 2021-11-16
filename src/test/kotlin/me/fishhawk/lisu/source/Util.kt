@@ -1,14 +1,11 @@
-package me.fishhawk.lisu.source.manhuaren
+package me.fishhawk.lisu.source
 
-import io.ktor.client.call.*
-import io.ktor.client.statement.*
-import io.ktor.util.cio.*
-import io.ktor.utils.io.*
+import me.fishhawk.lisu.model.Image
 import kotlin.io.path.Path
 import kotlin.io.path.createDirectories
 
-internal suspend fun saveTestImage(providerId: String, response: HttpResponse) {
-    val readChannel = response.receive<ByteReadChannel>()
-    val testImagePath = Path("test-image").createDirectories()
-    readChannel.copyTo(testImagePath.resolve("$providerId.png").toFile().writeChannel())
+internal fun saveTestImage(providerId: String, image: Image) {
+    val testImageDir = Path("test-image").createDirectories()
+    val testImageFile = testImageDir.resolve("$providerId.png").toFile()
+    image.stream.copyTo(testImageFile.outputStream())
 }

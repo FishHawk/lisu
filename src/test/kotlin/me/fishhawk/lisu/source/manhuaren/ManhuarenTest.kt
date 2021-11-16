@@ -3,6 +3,7 @@ package me.fishhawk.lisu.source.manhuaren
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
+import me.fishhawk.lisu.source.saveTestImage
 
 class ManhuarenTest : DescribeSpec({
     describe("Provider test: manhuaren") {
@@ -30,9 +31,9 @@ class ManhuarenTest : DescribeSpec({
         }
 
         it("#getImage") {
-            val images = provider.getContent(mangaId, "", chapterId).shouldNotBeEmpty()
-            val response = provider.getImage(images.first())
-            saveTestImage("manhuaren", response)
+            val urls = provider.getContent(mangaId, "", chapterId).shouldNotBeEmpty()
+            val image = provider.getImage(urls.first())
+            saveTestImage("manhuaren", image)
         }
     }
 })
