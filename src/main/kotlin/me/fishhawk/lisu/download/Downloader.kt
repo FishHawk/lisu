@@ -2,9 +2,10 @@ package me.fishhawk.lisu.download
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.selects.select
+import me.fishhawk.lisu.library.Chapter
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.library.Manga
+import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.source.Source
 import me.fishhawk.lisu.source.SourceManager
 
@@ -73,20 +74,6 @@ private class Worker(
     }
 }
 
-private suspend inline fun <T, C : Iterable<T>> C.forEachIndexedParallel(
-    limit: Int,
-    crossinline action: suspend (index: Int, T) -> Unit
-) = coroutineScope {
-    val executing = mutableListOf<Deferred<Unit>>()
-    forEachIndexed { index, value ->
-        executing.add(async { action(index, value) })
-        if (executing.size >= limit)
-            select<Unit> { executing.onEach { it.onJoin { } } }
-        executing.removeIf { it.isCompleted }
-    }
-    executing.awaitAll()
-}
-
 private suspend fun download(source: Source, manga: Manga): Boolean {
     val detailDto = source.getManga(manga.id)
     manga.takeIf { !it.hasMetadata() }?.updateMetadata(detailDto.metadataDetail)
@@ -95,7 +82,14 @@ private suspend fun download(source: Source, manga: Manga): Boolean {
             it.updateCover(source.getImage(cover))
         }
     }
+    return downloadChapters(source, manga, detailDto)
+}
 
+private suspend fun downloadChapters(
+    source: Source,
+    manga: Manga,
+    detailDto: MangaDetailDto
+): Boolean {
     val chapterIndList =
         detailDto.collections?.flatMap { (collectionId, chapters) -> chapters.map { Pair(collectionId, it.id) } }
             ?: detailDto.chapters?.map { Pair("", it.id) }
@@ -108,24 +102,28 @@ private suspend fun download(source: Source, manga: Manga): Boolean {
         ?.filter { it.unfinished }
         ?.collect { chapter ->
             try {
-                var hasImageError = false
-                val existingImages = chapter.getContent()
-                source.getContent(manga.id, chapter.collectionId, chapter.chapterId)
-                    .filterIndexed { index, _ ->
-                        existingImages.none { it == index.toString() }
-                    }.forEachIndexedParallel(5) { index, url ->
-                        try {
-                            val image = source.getImage(url)
-                            chapter.setImage(index.toString(), image)
-                        } catch (e: Throwable) {
-                            hasImageError = true
-                        }
-                    }
-                if (!hasImageError) chapter.unfinished = false
+                if (!downloadImages(source, manga, chapter))
+                    chapter.unfinished = false
                 else hasChapterError = true
             } catch (e: Throwable) {
                 hasChapterError = true
             }
         }
     return hasChapterError
+}
+
+private suspend fun downloadImages(source: Source, manga: Manga, chapter: Chapter): Boolean {
+    var hasImageError = false
+    val existingImages = chapter.getContent()
+    source.getContent(manga.id, chapter.collectionId, chapter.chapterId)
+        .filterIndexed { index, _ -> existingImages.none { it == index.toString() } }
+        .forEachIndexedParallel(5) { index, url ->
+            try {
+                val image = retry(3) { source.getImage(url) }
+                chapter.setImage(index.toString(), image)
+            } catch (e: Throwable) {
+                hasImageError = true
+            }
+        }
+    return hasImageError
 }
