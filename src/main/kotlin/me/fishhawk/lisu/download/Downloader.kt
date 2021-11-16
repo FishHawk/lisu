@@ -30,6 +30,7 @@ class Downloader(
 
     init {
         GlobalScope.launch {
+            updateAll() // Update all mangas at startup
             updater.doInfinity { updateAll() }
         }
     }
