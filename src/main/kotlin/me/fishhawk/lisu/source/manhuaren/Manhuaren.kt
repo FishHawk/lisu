@@ -15,6 +15,8 @@ import me.fishhawk.lisu.source.Board
 import me.fishhawk.lisu.source.BoardModel
 import me.fishhawk.lisu.source.Source
 import java.net.URL
+import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -33,7 +35,6 @@ class Manhuaren : Source {
     )
 
     private val api = Api()
-
 
     override suspend fun search(page: Int, keywords: String): List<MangaDto> =
         api.getSearchManga(page, keywords).receive<JsonObject>().let {
@@ -64,11 +65,7 @@ class Manhuaren : Source {
                 providerId = id,
                 id = obj["mangaId"]!!.jsonPrimitive.content,
                 cover = obj["mangaCoverimageUrl"]?.jsonPrimitive?.content,
-                updateTime = obj["mangaNewestTime"]?.jsonPrimitive?.content?.let { date ->
-                    LocalDateTime.parse(
-                        date, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                    ).atZone(ZoneId.systemDefault()).toEpochSecond()
-                },
+                updateTime = obj["mangaNewestTime"]?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
                 title = obj["mangaName"]?.jsonPrimitive?.content,
                 authors = obj["mangaAuthor"]?.jsonPrimitive?.content?.split(","),
                 isFinished = obj["mangaIsOver"]!!.jsonPrimitive.int == 1
@@ -88,11 +85,7 @@ class Manhuaren : Source {
                         (obj["mangaPicimageUrl"] ?: obj["shareIcon"])?.jsonPrimitive?.content ?: ""
                     } else it
                 },
-                updateTime = obj["mangaNewestTime"]?.jsonPrimitive?.content?.let { date ->
-                    LocalDateTime.parse(
-                        date, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                    ).atZone(ZoneId.systemDefault()).toEpochSecond()
-                },
+                updateTime = obj["mangaNewestTime"]?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
 
                 title = obj["mangaName"]!!.jsonPrimitive.content,
                 authors = obj["mangaAuthors"]!!.jsonArray.map { it.jsonPrimitive.content },
@@ -113,7 +106,8 @@ class Manhuaren : Source {
                             id = it.jsonObject["sectionId"]!!.jsonPrimitive.content,
                             name = it.jsonObject["sectionName"]!!.jsonPrimitive.content,
                             title = it.jsonObject["sectionTitle"]!!.jsonPrimitive.content,
-                            isLocked = it.jsonObject["isMustPay"]!!.jsonPrimitive.int == 1
+                            isLocked = it.jsonObject["isMustPay"]?.jsonPrimitive?.int == 1,
+                            updateTime = it.jsonObject["releaseTime"]?.asDateToEpochSecond("yyyy-MM-dd")
                         )
                     }.reversed()
                 }.filterValues { it.isNotEmpty() }
@@ -139,3 +133,16 @@ class Manhuaren : Source {
         }
     }
 }
+
+private fun JsonElement.asDateTimeToEpochSecond(pattern: String) =
+    LocalDateTime
+        .parse(jsonPrimitive.content, DateTimeFormatter.ofPattern(pattern))
+        .atZone(ZoneId.systemDefault())
+        .toEpochSecond()
+
+private fun JsonElement.asDateToEpochSecond(pattern: String) =
+    LocalDate
+        .parse(jsonPrimitive.content, DateTimeFormatter.ofPattern(pattern))
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toEpochSecond()
