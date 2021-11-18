@@ -75,10 +75,11 @@ fun Route.providerRoutes(libraryManager: LibraryManager, sourceManager: SourceMa
     }
 
     get<ProviderLocation.Icon> { loc ->
-        val icon = sourceManager.getSource(loc.providerId).ensure("provider")
-            .icon?.let { File(it.file) }.ensure("icon")
-        if (icon.exists()) call.respondFile(icon)
-        else throw HttpException.NotFound("icon")
+        val source = sourceManager.getSource(loc.providerId).ensure("provider")
+        val image = source::class.java.getResourceAsStream("icon.png")
+            ?.let { Image(ContentType.Image.PNG, it) }
+            .ensure("icon")
+        call.respondImage(image)
     }
 
     get<ProviderLocation.Search> { loc ->

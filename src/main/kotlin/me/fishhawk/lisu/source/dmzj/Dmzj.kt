@@ -10,7 +10,6 @@ import java.net.URL
 class Dmzj : Source {
     override val id: String = "动漫之家"
     override val lang: String = "zh"
-    override val icon: URL? = this::class.java.getResource("icon.png")
     override val boardModels: Map<String, BoardModel> = mapOf(
         "热门" to mapOf("type" to emptyList()),
         "最新" to mapOf("type" to emptyList()),

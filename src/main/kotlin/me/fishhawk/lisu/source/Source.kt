@@ -3,6 +3,7 @@ package me.fishhawk.lisu.source
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
+import java.io.InputStream
 import java.net.URL
 
 typealias BoardModel = Map<String, List<String>>
@@ -16,7 +17,6 @@ enum class Board(val id: String) {
 interface Source {
     val id: String
     val lang: String
-    val icon: URL?
     val boardModels: Map<String, BoardModel>
 
     suspend fun search(page: Int, keywords: String): List<MangaDto>

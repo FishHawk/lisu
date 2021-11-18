@@ -14,6 +14,7 @@ import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.source.Board
 import me.fishhawk.lisu.source.BoardModel
 import me.fishhawk.lisu.source.Source
+import java.io.InputStream
 import java.net.URL
 import java.time.Instant
 import java.time.LocalDate
@@ -24,7 +25,8 @@ import java.time.format.DateTimeFormatter
 class Manhuaren : Source {
     override val id: String = "漫画人"
     override val lang: String = "zh"
-    override val icon: URL? = this::class.java.getResource("icon.png")
+
+
     override val boardModels: Map<String, BoardModel> = mapOf(
         Board.Popular.id to mapOf("type" to Api.rankTypes.map { it.name }),
         Board.Latest.id to mapOf("type" to listOf("最新更新", "最新上架")),
