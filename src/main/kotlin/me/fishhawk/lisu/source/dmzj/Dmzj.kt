@@ -5,7 +5,6 @@ import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.source.BoardModel
 import me.fishhawk.lisu.source.Source
-import java.net.URL
 
 class Dmzj : Source {
     override val id: String = "动漫之家"

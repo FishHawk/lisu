@@ -2,13 +2,18 @@ package me.fishhawk.lisu.model
 
 import kotlinx.serialization.Serializable
 
+const val DefaultTagName = ""
+
 @Serializable
 data class MetadataDetailDto(
     val title: String? = null,
     val authors: List<String>? = null,
     val isFinished: Boolean? = null,
     val description: String? = null,
-    val tags: Map<String, List<String>>? = null
+    val tags: Map<String, List<String>>? = null,
+
+    val collections: Map<String, List<ChapterDto>>? = null,
+    val chapters: List<ChapterDto>? = null,
 )
 
 @Serializable
@@ -37,6 +42,8 @@ data class MangaDetailDto(
             authors = authors,
             isFinished = isFinished,
             description = description,
-            tags = tags
+            tags = tags,
+            collections = collections,
+            chapters = chapters
         )
 }

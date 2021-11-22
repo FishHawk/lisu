@@ -26,7 +26,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
 
     implementation("org.codehaus.janino:janino:3.1.6")
-    implementation("ch.qos.logback:logback-classic:1.2.6")
+    implementation("ch.qos.logback:logback-classic:1.2.7")
 
     implementation("se.sawano.java:alphanumeric-comparator:1.4.1")
 
@@ -36,6 +36,7 @@ dependencies {
     val kotestVersion = "4.6.3"
     testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
+    testImplementation("io.kotest:kotest-assertions-ktor:4.4.3")
 }
 
 application {

@@ -23,7 +23,7 @@ class Manga(private val path: Path) {
             providerId = providerId,
             id = id,
             cover = null,
-            updateTime = null,
+            updateTime = path.getLastModifiedTime().toInstant().epochSecond,
             title = metadata?.title,
             authors = metadata?.authors,
             isFinished = metadata?.isFinished
@@ -32,8 +32,8 @@ class Manga(private val path: Path) {
 
     fun getDetail(): MangaDetailDto {
         val metadata = parseMetadataAs(MetadataDetailDto.serializer())
-        val collections = detectCollections(path).ifEmpty { null }
-        val chapters = if (collections != null) null else detectChapters(path).ifEmpty { null }
+        val collections = metadata?.collections ?: detectCollections(path).ifEmpty { null }
+        val chapters = if (collections != null) null else metadata?.chapters ?: detectChapters(path).ifEmpty { null }
         val previews = if (chapters != null) null else detectPreviews(path).ifEmpty { null }
         return MangaDetailDto(
             providerId = providerId,
@@ -42,7 +42,7 @@ class Manga(private val path: Path) {
             inLibrary = true,
 
             cover = null,
-            updateTime = null,
+            updateTime = path.getLastModifiedTime().toInstant().epochSecond,
 
             title = metadata?.title,
             authors = metadata?.authors,
@@ -141,11 +141,11 @@ private fun detectChapters(path: Path): List<ChapterDto> {
         .listDirectory()
         .sortedWith(alphanumericOrder())
         .map {
+            val id = it.name
+            val (name, title) = id.split(" ", limit = 2)
             ChapterDto(
-                id = it.name,
-                name = it.name,
-                title = it.name,
-                updateTime = it.getLastModifiedTime().toMillis()
+                id = id, name = name, title = title,
+                updateTime = it.getLastModifiedTime().toInstant().epochSecond
             )
         }
 }

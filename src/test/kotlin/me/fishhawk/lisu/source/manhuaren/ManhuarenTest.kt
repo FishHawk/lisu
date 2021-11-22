@@ -6,34 +6,35 @@ import io.kotest.matchers.shouldBe
 import me.fishhawk.lisu.source.saveTestImage
 
 class ManhuarenTest : DescribeSpec({
-    describe("Provider test: manhuaren") {
-        val provider = Manhuaren()
+    describe("Source test: manhuaren") {
+        val source = Manhuaren()
 
         it("#search") {
-            provider.search(0, "龙珠超").first().title.shouldBe("龙珠超")
+            source.search(0, "龙珠超").first().title.shouldBe("龙珠超")
         }
 
         it("#getBoard") {
-            provider.getBoard("popular", 0, mapOf("type" to 0)).shouldNotBeEmpty()
-            provider.getBoard("latest", 0, mapOf("type" to 0)).shouldNotBeEmpty()
-            provider.getBoard("category", 0, mapOf("type" to 0, "status" to 0)).shouldNotBeEmpty()
+            source.getBoard("popular", 0, mapOf("type" to 0)).shouldNotBeEmpty()
+            source.getBoard("latest", 0, mapOf("type" to 0)).shouldNotBeEmpty()
+            source.getBoard("latest", 0, mapOf("type" to 1)).shouldNotBeEmpty()
+            source.getBoard("category", 0, mapOf("type" to 0, "status" to 0)).shouldNotBeEmpty()
         }
 
         val mangaId = "18657"
         val chapterId = "1012028"
 
         it("#getManga") {
-            provider.getManga(mangaId).title.shouldBe("龙珠超")
+            source.getManga(mangaId).title.shouldBe("龙珠超")
         }
 
         it("#getChapter") {
-            provider.getContent(mangaId, "", chapterId).shouldNotBeEmpty()
+            source.getContent(mangaId, "", chapterId).shouldNotBeEmpty()
         }
 
         it("#getImage") {
-            val urls = provider.getContent(mangaId, "", chapterId).shouldNotBeEmpty()
-            val image = provider.getImage(urls.first())
-            saveTestImage("manhuaren", image)
+            val url = source.getContent(mangaId, "", chapterId).first()
+            val image = source.getImage(url)
+            source.saveTestImage(image)
         }
     }
 })

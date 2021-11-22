@@ -11,21 +11,11 @@ import me.fishhawk.lisu.model.ChapterDto
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
-import me.fishhawk.lisu.source.Board
-import me.fishhawk.lisu.source.BoardModel
-import me.fishhawk.lisu.source.Source
-import java.io.InputStream
-import java.net.URL
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import me.fishhawk.lisu.source.*
 
 class Manhuaren : Source {
     override val id: String = "漫画人"
     override val lang: String = "zh"
-
 
     override val boardModels: Map<String, BoardModel> = mapOf(
         Board.Popular.id to mapOf("type" to Api.rankTypes.map { it.name }),
@@ -50,29 +40,25 @@ class Manhuaren : Source {
             Board.Latest.id -> when (filters["type"]!!) {
                 0 -> api.getUpdate(page)
                 1 -> api.getRelease(page)
-                else -> null
+                else -> throw Error("board not found")
             }
             Board.Category.id -> api.getCategoryMangas(page, filters["type"]!!, filters["status"]!!)
-            else -> null
-        }?.receive<JsonObject>()?.let {
-            parseJsonArrayToMangas(
-                it["response"]!!.jsonObject["mangas"]!!.jsonArray
-            )
-        } ?: throw Error("board not found")
-
-    private fun parseJsonArrayToMangas(arr: JsonArray): List<MangaDto> {
-        return arr.map {
-            val obj = it.jsonObject
-            MangaDto(
-                providerId = id,
-                id = obj["mangaId"]!!.jsonPrimitive.content,
-                cover = obj["mangaCoverimageUrl"]?.jsonPrimitive?.content,
-                updateTime = obj["mangaNewestTime"]?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
-                title = obj["mangaName"]?.jsonPrimitive?.content,
-                authors = obj["mangaAuthor"]?.jsonPrimitive?.content?.split(","),
-                isFinished = obj["mangaIsOver"]!!.jsonPrimitive.int == 1
-            )
+            else -> throw Error("board not found")
+        }.receive<JsonObject>().let {
+            parseJsonArrayToMangas(it["response"]!!.jsonObject["mangas"]!!.jsonArray)
         }
+
+    private fun parseJsonArrayToMangas(arr: JsonArray) = arr.map {
+        val obj = it.jsonObject
+        MangaDto(
+            providerId = id,
+            id = obj["mangaId"]!!.jsonPrimitive.content,
+            cover = obj["mangaCoverimageUrl"]?.jsonPrimitive?.content,
+            updateTime = obj["mangaNewestTime"]?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
+            title = obj["mangaName"]?.jsonPrimitive?.content,
+            authors = obj["mangaAuthor"]?.jsonPrimitive?.content?.split(","),
+            isFinished = obj["mangaIsOver"]!!.jsonPrimitive.int == 1
+        )
     }
 
     override suspend fun getManga(mangaId: String): MangaDetailDto =
@@ -135,16 +121,3 @@ class Manhuaren : Source {
         }
     }
 }
-
-private fun JsonElement.asDateTimeToEpochSecond(pattern: String) =
-    LocalDateTime
-        .parse(jsonPrimitive.content, DateTimeFormatter.ofPattern(pattern))
-        .atZone(ZoneId.systemDefault())
-        .toEpochSecond()
-
-private fun JsonElement.asDateToEpochSecond(pattern: String) =
-    LocalDate
-        .parse(jsonPrimitive.content, DateTimeFormatter.ofPattern(pattern))
-        .atStartOfDay()
-        .atZone(ZoneId.systemDefault())
-        .toEpochSecond()
