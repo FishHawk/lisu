@@ -31,7 +31,7 @@ class Bilibili : Source {
     private val api = Api()
 
     override suspend fun search(page: Int, keywords: String): List<MangaDto> =
-        api.search(page, keywords).receive<JsonObject>().let { json ->
+        api.search(page, keywords).body<JsonObject>().let { json ->
             json["data"]!!.jsonObject["list"]!!.jsonArray.map { it.jsonObject }.map { obj ->
                 MangaDto(
                     providerId = id,
@@ -48,7 +48,7 @@ class Bilibili : Source {
     override suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> =
         when (boardId) {
             Board.Popular.id -> if (page > 0) emptyList() else api.getHomeHot(filters["type"]!!)
-                .receive<JsonObject>()
+                .body<JsonObject>()
                 .let { it["data"]!!.jsonArray.obj }
                 .map { obj ->
                     MangaDto(
@@ -63,7 +63,7 @@ class Bilibili : Source {
             Board.Latest.id -> api.getDailyPush(
                 page,
                 LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-            ).receive<JsonObject>()
+            ).body<JsonObject>()
                 .let { it["data"]!!.jsonObject["list"]!!.jsonArray.obj }
                 .map { obj ->
                     MangaDto(
@@ -80,7 +80,7 @@ class Bilibili : Source {
                 filters["isFinish"]!!,
                 filters["isFree"]!!,
                 filters["order"]!!,
-            ).receive<JsonObject>()
+            ).body<JsonObject>()
                 .let { it["data"]!!.jsonArray.obj }
                 .map { obj ->
                     MangaDto(
@@ -96,7 +96,7 @@ class Bilibili : Source {
 
     override suspend fun getManga(mangaId: String): MangaDetailDto =
         api.getComicDetail(mangaId)
-            .receive<JsonObject>()
+            .body<JsonObject>()
             .let { it["data"]!!.jsonObject }
             .let { obj ->
                 println(obj)
@@ -125,11 +125,11 @@ class Bilibili : Source {
 
     override suspend fun getContent(mangaId: String, collectionId: String, chapterId: String): List<String> =
         api.getImageIndex(chapterId)
-            .receive<JsonObject>()
+            .body<JsonObject>()
             .let { it["data"]!!.jsonObject }
             .let { obj -> obj["images"]!!.jsonArray.obj.map { it["path"]!!.jsonPrimitive.content } }
             .let { images -> api.getImageToken(images) }
-            .receive<JsonObject>()
+            .body<JsonObject>()
             .let { it["data"]!!.jsonArray.obj }
             .map {
                 val url = it["url"]!!.jsonPrimitive.content
@@ -142,7 +142,7 @@ class Bilibili : Source {
         api.getImage(url).let {
             Image(
                 it.contentType(),
-                it.receive<ByteReadChannel>().toInputStream()
+                it.body<ByteReadChannel>().toInputStream()
             )
         }
     }

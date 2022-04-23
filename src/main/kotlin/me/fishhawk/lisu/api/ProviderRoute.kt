@@ -1,13 +1,13 @@
 package me.fishhawk.lisu.api
 
-import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.http.content.*
-import io.ktor.locations.*
-import io.ktor.locations.put
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.locations.*
+import io.ktor.server.locations.put
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,7 +18,6 @@ import me.fishhawk.lisu.model.MetadataDetailDto
 import me.fishhawk.lisu.model.ProviderDto
 import me.fishhawk.lisu.model.respondImage
 import me.fishhawk.lisu.source.SourceManager
-import java.io.File
 
 @OptIn(KtorExperimentalLocationsAPI::class)
 private object ProviderLocation {

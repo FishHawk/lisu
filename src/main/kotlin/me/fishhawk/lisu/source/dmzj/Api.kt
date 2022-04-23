@@ -3,17 +3,18 @@ package me.fishhawk.lisu.source.dmzj
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.features.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
 class Api {
     private val client = HttpClient(CIO) {
-        Json {
-            serializer = KotlinxSerializer(kotlinx.serialization.json.Json {
+        install(ContentNegotiation) {
+            json(Json {
                 prettyPrint = true
                 isLenient = true
             })
@@ -33,7 +34,7 @@ class Api {
     }
 
     private suspend fun get(url: String, parameters: MutableMap<String, String>) =
-        client.request<HttpResponse>("http://mangaapi.manhuaren.com$url").receive<JsonObject>()
+        client.get("http://mangaapi.manhuaren.com$url").body<JsonObject>()
 
     /**
      * 按关键词搜索

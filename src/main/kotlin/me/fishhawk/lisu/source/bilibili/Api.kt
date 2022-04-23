@@ -2,11 +2,10 @@ package me.fishhawk.lisu.source.bilibili
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
@@ -14,8 +13,8 @@ import kotlinx.serialization.json.Json
 
 class Api {
     private val client = HttpClient(CIO) {
-        install(JsonFeature) {
-            serializer = KotlinxSerializer(kotlinx.serialization.json.Json {
+        install(ContentNegotiation) {
+            json(Json {
                 prettyPrint = true
                 isLenient = true
             })
@@ -23,11 +22,9 @@ class Api {
     }
 
     private suspend fun post(url: String, bodyBuilder: () -> Any) =
-        client.post<HttpResponse>(
-            "https://manga.bilibili.com/twirp/comic.v1.Comic$url?device=pc&platform=web"
-        ) {
+        client.post("https://manga.bilibili.com/twirp/comic.v1.Comic$url?device=pc&platform=web") {
             contentType(ContentType.Application.Json)
-            body = bodyBuilder()
+            setBody(bodyBuilder())
         }
 
     /**
@@ -158,7 +155,7 @@ class Api {
      * 获取图片
      * @param url - 图片url
      */
-    suspend fun getImage(url: String) = client.request<HttpResponse>(url)
+    suspend fun getImage(url: String) = client.get(url)
 
     companion object {
         val homeHotType = arrayOf(

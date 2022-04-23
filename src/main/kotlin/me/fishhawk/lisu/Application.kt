@@ -1,15 +1,20 @@
+@file:OptIn(KtorExperimentalLocationsAPI::class)
+
 package me.fishhawk.lisu
 
-import io.ktor.application.*
-import io.ktor.features.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.serialization.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
 import io.ktor.server.engine.*
+import io.ktor.server.locations.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.*
+import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
@@ -54,13 +59,13 @@ private fun Application.lisuModule(
     }
 
     install(StatusPages) {
-        exception<NotFoundException> { cause ->
+        exception<NotFoundException> { call, cause ->
             call.respondText(cause.localizedMessage, status = HttpStatusCode.NotFound)
         }
-        exception<Throwable> { cause ->
+        exception<Throwable> { call, cause ->
             call.respondText(cause.localizedMessage, status = HttpStatusCode.InternalServerError)
         }
-        exception<HttpException> { cause ->
+        exception<HttpException> { call, cause ->
             call.respondText(cause.localizedMessage, status = cause.status)
         }
     }

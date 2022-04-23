@@ -1,11 +1,11 @@
 package me.fishhawk.lisu.api
 
-import io.ktor.application.*
 import io.ktor.http.*
-import io.ktor.locations.*
-import io.ktor.locations.post
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.locations.*
+import io.ktor.server.locations.post
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.fishhawk.lisu.download.Downloader

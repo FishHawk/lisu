@@ -2,11 +2,11 @@ package me.fishhawk.lisu.source.manhuaren
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.features.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 import java.security.MessageDigest
 import java.time.LocalDateTime
@@ -14,8 +14,8 @@ import java.time.format.DateTimeFormatter
 
 class Api {
     private val client = HttpClient(CIO) {
-        install(JsonFeature) {
-            serializer = KotlinxSerializer(kotlinx.serialization.json.Json {
+        install(ContentNegotiation) {
+            json(Json {
                 prettyPrint = true
                 isLenient = true
             })
@@ -107,10 +107,10 @@ class Api {
      * 获取图片
      * @param url - 图片url
      */
-    suspend fun getImage(url: String) = client.request<HttpResponse>(url)
+    suspend fun getImage(url: String) = client.get(url)
 
     private suspend fun get(url: String, parameters: Map<String, String> = emptyMap()) =
-        client.request<HttpResponse>("http://mangaapi.manhuaren.com$url") {
+        client.get("http://mangaapi.manhuaren.com$url") {
             parameters.addExtraParam().forEach { (key, value) -> parameter(key, value) }
         }
 

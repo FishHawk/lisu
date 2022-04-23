@@ -29,7 +29,7 @@ class Manhuaren : Source {
     private val api = Api()
 
     override suspend fun search(page: Int, keywords: String): List<MangaDto> =
-        api.getSearchManga(page, keywords).receive<JsonObject>().let {
+        api.getSearchManga(page, keywords).body<JsonObject>().let {
             val obj = it["response"]!!.jsonObject
             parseJsonArrayToMangas((obj["result"] ?: obj["mangas"]!!).jsonArray)
         }
@@ -44,7 +44,7 @@ class Manhuaren : Source {
             }
             Board.Category.id -> api.getCategoryMangas(page, filters["type"]!!, filters["status"]!!)
             else -> throw Error("board not found")
-        }.receive<JsonObject>().let {
+        }.body<JsonObject>().let {
             parseJsonArrayToMangas(it["response"]!!.jsonObject["mangas"]!!.jsonArray)
         }
 
@@ -62,7 +62,7 @@ class Manhuaren : Source {
     }
 
     override suspend fun getManga(mangaId: String): MangaDetailDto =
-        api.getDetail(mangaId).receive<JsonObject>().let { data ->
+        api.getDetail(mangaId).body<JsonObject>().let { data ->
             val obj = data["response"]!!.jsonObject
 
             MangaDetailDto(
@@ -103,7 +103,7 @@ class Manhuaren : Source {
         }
 
     override suspend fun getContent(mangaId: String, collectionId: String, chapterId: String): List<String> =
-        api.getRead(chapterId).receive<JsonObject>().let { data ->
+        api.getRead(chapterId).body<JsonObject>().let { data ->
             val obj = data["response"]!!.jsonObject
             val host = obj["hostList"]!!.jsonArray.first().jsonPrimitive.content
             val query = obj["query"]!!.jsonPrimitive.content
@@ -116,7 +116,7 @@ class Manhuaren : Source {
         api.getImage(url).let {
             Image(
                 it.contentType(),
-                it.receive<ByteReadChannel>().toInputStream()
+                it.body<ByteReadChannel>().toInputStream()
             )
         }
     }
