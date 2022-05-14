@@ -3,8 +3,7 @@ package me.fishhawk.lisu.source
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
-import java.io.InputStream
-import java.net.URL
+import me.fishhawk.lisu.runCatchingException
 
 typealias BoardModel = Map<String, List<String>>
 
@@ -14,18 +13,28 @@ enum class Board(val id: String) {
     Category("category")
 }
 
-interface Source {
-    val id: String
-    val lang: String
-    val boardModels: Map<String, BoardModel>
+abstract class Source {
+    abstract val id: String
+    abstract val lang: String
+    abstract val boardModels: Map<String, BoardModel>
 
-    suspend fun search(page: Int, keywords: String): List<MangaDto>
+    protected abstract suspend fun searchImpl(page: Int, keywords: String): List<MangaDto>
+    suspend fun search(page: Int, keywords: String) =
+        runCatchingException { searchImpl(page = page, keywords = keywords) }
 
-    suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto>
+    protected abstract suspend fun getBoardImpl(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto>
+    suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>) =
+        runCatchingException { getBoardImpl(boardId = boardId, page = page, filters = filters) }
 
-    suspend fun getManga(mangaId: String): MangaDetailDto
+    protected abstract suspend fun getMangaImpl(mangaId: String): MangaDetailDto
+    suspend fun getManga(mangaId: String) =
+        runCatchingException { getMangaImpl(mangaId = mangaId) }
 
-    suspend fun getContent(mangaId: String, collectionId: String, chapterId: String): List<String>
+    protected abstract suspend fun getContentImpl(mangaId: String, chapterId: String): List<String>
+    suspend fun getContent(mangaId: String, chapterId: String) =
+        runCatchingException { getContentImpl(mangaId = mangaId, chapterId = chapterId) }
 
-    suspend fun getImage(url: String): Image
+    protected abstract suspend fun getImageImpl(url: String): Image
+    suspend fun getImage(url: String) =
+        runCatchingException { getImageImpl(url = url) }
 }

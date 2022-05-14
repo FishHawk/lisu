@@ -5,6 +5,7 @@ import io.ktor.server.application.*
 import io.ktor.server.response.*
 import java.io.InputStream
 import java.nio.file.Path
+import kotlin.io.path.inputStream
 
 data class Image(
     val mime: ContentType?,
@@ -16,7 +17,7 @@ data class Image(
     }
 }
 
-fun Path.toImage() = Image(null, this.toFile().inputStream())
+fun Path.toImage() = Image(null, this.inputStream())
 
 suspend fun ApplicationCall.respondImage(image: Image) {
     respondOutputStream(image.mime) { image.stream.copyTo(this) }

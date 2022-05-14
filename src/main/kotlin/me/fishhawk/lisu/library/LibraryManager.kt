@@ -1,64 +1,45 @@
 package me.fishhawk.lisu.library
 
 import me.fishhawk.lisu.model.MangaDto
+import me.fishhawk.lisu.then
 import java.nio.file.Path
 import kotlin.io.path.*
 
 class LibraryManager(private val path: Path) {
-    fun listMangaNeedUpdate(): List<Manga> {
-        return path.listDirectory()
-            .flatMap { it.listDirectory() }
-            .map { Manga(it) }
-            .filter { it.get().isFinished != true }
-    }
+    fun listLibraries() =
+        path.listDirectory()
+            .getOrDefault(emptyList())
+            .map { Library(it) }
+
+    private fun listMangas() =
+        listLibraries()
+            .flatMap { it.listMangas() }
 
     fun search(page: Int, keywords: String): List<MangaDto> {
         val filters = Filter.fromKeywords(keywords)
-        val pageSize = 100
-        return path.listDirectory()
-            .flatMap { it.listDirectory() }
-            .sortedByDescending { it.getLastModifiedTime() }
+        return listMangas()
+            .sortedByDescending { it.path.getLastModifiedTime() }
             .asSequence()
-            .map { Manga(it) }
-            .filter { manga ->
-                filters.all {
-                    it.isPass(manga.getSearchEntry())
-                }
-            }
-            .drop(pageSize * page)
-            .take(pageSize)
+            .filter { manga -> filters.all { it.isPass(manga.getSearchEntry()) } }
+            .page(page = page, pageSize = 100)
             .map { it.get() }
             .toList()
     }
 
-    fun getRandomManga(): Manga {
-        return path.listDirectory()
-            .flatMap { it.listDirectory() }
-            .random()
-            .let { Manga(it) }
-    }
+    fun getRandomManga() =
+        listMangas().random()
 
-    fun listLibraries(): List<Library> {
-        return path.listDirectory()
-            .map { Library(it) }
-    }
+    private fun getLibraryPath(id: String) =
+        path.resolveChild(id)
 
-    fun getLibrary(id: String): Library? {
-        return getLibraryPath(id)
-            .takeIf { it.isDirectory() }
+    fun getLibrary(id: String) =
+        getLibraryPath(id)
+            .getOrNull()
+            ?.takeIf { it.isDirectory() }
             ?.let { Library(it) }
-    }
 
-    fun getOrCreateLibrary(id: String): Library? =
-        getLibrary(id) ?: createLibrary(id)
-
-    private fun createLibrary(id: String): Library? {
-        return getLibraryPath(id)
-            .takeIf { it.notExists() }
-            ?.let { Library(it.createDirectory()) }
-    }
-
-    private fun getLibraryPath(id: String): Path {
-        return path.resolve(id)
-    }
+    fun createLibrary(id: String) =
+        getLibraryPath(id)
+            .then(Path::createDir)
+            .map { Library(it) }
 }

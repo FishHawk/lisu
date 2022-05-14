@@ -13,4 +13,6 @@ class SourceManager {
     fun listSources() = sources.values
 
     fun getSource(id: String) = sources[id]
+
+    fun hasSource(id: String) = sources.containsKey(id)
 }

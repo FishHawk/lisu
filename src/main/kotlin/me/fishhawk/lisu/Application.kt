@@ -1,5 +1,3 @@
-@file:OptIn(KtorExperimentalLocationsAPI::class)
-
 package me.fishhawk.lisu
 
 import io.ktor.http.*
@@ -26,6 +24,7 @@ import me.fishhawk.lisu.api.providerRoutes
 import me.fishhawk.lisu.api.systemRoutes
 import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
+import me.fishhawk.lisu.api.ProviderManager
 import me.fishhawk.lisu.source.SourceManager
 import kotlin.io.path.Path
 
@@ -37,16 +36,23 @@ fun main(args: Array<String>) {
 
     val libraryManager = LibraryManager(Path(libraryPath))
     val sourceManager = SourceManager()
+    val providerManager = ProviderManager(libraryManager, sourceManager)
     val downloader = Downloader(libraryManager, sourceManager)
 
     embeddedServer(Netty, port) {
-        lisuModule(libraryManager, sourceManager, downloader)
+        lisuModule(
+            libraryManager,
+            sourceManager,
+            providerManager,
+            downloader
+        )
     }.start(wait = true)
 }
 
 private fun Application.lisuModule(
     libraryManager: LibraryManager,
     sourceManager: SourceManager,
+    providerManager: ProviderManager,
     downloader: Downloader
 ) {
     install(Locations)
@@ -80,8 +86,8 @@ private fun Application.lisuModule(
     }
 
     routing {
-        libraryRoutes(libraryManager, sourceManager, downloader)
-        providerRoutes(libraryManager, sourceManager)
+        libraryRoutes(libraryManager, downloader)
+        providerRoutes(providerManager)
         systemRoutes()
     }
 }

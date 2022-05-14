@@ -2,33 +2,55 @@ package me.fishhawk.lisu.library
 
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.toImage
+import me.fishhawk.lisu.then
 import java.nio.file.Path
-import kotlin.io.path.exists
-import kotlin.io.path.name
+import kotlin.io.path.*
 
 class Chapter(
-    val collectionId: String,
-    val chapterId: String,
-    private val path: Path
+    private val path: Path,
+    private val depth: Depth
 ) {
-    private val unfinishedFile = path.resolve(".unfinished").toFile()
+    enum class Depth { Zero, One, Two }
 
-    var unfinished
-        get() = unfinishedFile.isFile
-        set(value) {
-            if (value) unfinishedFile.createNewFile()
-            else unfinishedFile.delete()
-        }
+    val id
+        get() = if (depth == Depth.Zero) "" else path.name
 
-    fun getContent() = path.listImageFiles().sortedAlphanumeric().map { it.name }
+    private val unfinishedFile
+        get() = path / ".unfinished"
 
-    fun getImage(name: String): Image? {
-        val imagePath = path.resolve(name)
-        return if (imagePath.exists()) imagePath.toImage() else null
+    fun isFinished(): Boolean {
+        return !unfinishedFile.exists()
     }
 
-    fun setImage(name: String, image: Image) {
-        val imageFile = path.resolve("$name.${image.ext}").toFile()
-        image.stream.copyTo(imageFile.outputStream())
+    fun setUnfinished(): Result<Unit> {
+        return unfinishedFile
+            .createFile()
+            .then(Path::setDosHidden)
+            .map { it.discard() }
+    }
+
+    fun setFinished(): Result<Unit> {
+        return unfinishedFile.delete()
+    }
+
+    fun getContent(): List<String>? {
+        return path.listImageFiles()
+            .getOrNull()
+            ?.map { it.nameWithoutExtension }
+            ?.distinct()
+            ?.sortedWith(alphanumericOrder())
+    }
+
+    fun getImage(name: String): Image? {
+        return path.listImageFiles()
+            .getOrNull()
+            ?.firstOrNull { it.nameWithoutExtension == name }
+            ?.toImage()
+    }
+
+    fun setImage(name: String, image: Image): Result<Unit> {
+        return path.resolveChild("$name.${image.ext}")
+            .then(Path::outputStream)
+            .map { image.stream.copyTo(it).discard() }
     }
 }

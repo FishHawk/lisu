@@ -11,13 +11,13 @@ class BilibiliTest : DescribeSpec({
         val source = Bilibili()
 
         it("#search") {
-            source.search(0, "迷宫饭").first().title.shouldBe("迷宫饭")
+            source.searchImpl(0, "迷宫饭").first().title.shouldBe("迷宫饭")
         }
 
         it("#getBoard") {
-            source.getBoard(Board.Popular.id, 0, mapOf("type" to 0)).shouldNotBeEmpty()
-            source.getBoard(Board.Latest.id, 0, emptyMap()).shouldNotBeEmpty()
-            source.getBoard(
+            source.getBoardImpl(Board.Popular.id, 0, mapOf("type" to 0)).shouldNotBeEmpty()
+            source.getBoardImpl(Board.Latest.id, 0, emptyMap()).shouldNotBeEmpty()
+            source.getBoardImpl(
                 Board.Category.id, 0,
                 mapOf("style" to 0, "area" to 0, "isFinish" to 0, "isFree" to 0, "order" to 0)
             ).shouldNotBeEmpty()
@@ -27,16 +27,16 @@ class BilibiliTest : DescribeSpec({
         val chapterId = "466261"
 
         it("#getManga") {
-            source.getManga(mangaId).title.shouldBe("迷宫饭")
+            source.getMangaImpl(mangaId).title.shouldBe("迷宫饭")
         }
 
         it("#getChapter") {
-            source.getContent(mangaId, "", chapterId).shouldNotBeEmpty()
+            source.getContentImpl(mangaId, chapterId).shouldNotBeEmpty()
         }
 
         it("#getImage") {
-            val url = source.getContent(mangaId, "", chapterId).first()
-            val image = source.getImage(url)
+            val url = source.getContentImpl(mangaId, chapterId).first()
+            val image = source.getImageImpl(url)
             source.saveTestImage(image)
         }
     }

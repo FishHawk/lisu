@@ -12,7 +12,7 @@ import me.fishhawk.lisu.source.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class Bilibili : Source {
+class Bilibili : Source() {
     override val id: String = "哔哩哔哩漫画"
     override val lang: String = "zh"
 
@@ -30,7 +30,7 @@ class Bilibili : Source {
 
     private val api = Api()
 
-    override suspend fun search(page: Int, keywords: String): List<MangaDto> =
+    override suspend fun searchImpl(page: Int, keywords: String): List<MangaDto> =
         api.search(page, keywords).body<JsonObject>().let { json ->
             json["data"]!!.jsonObject["list"]!!.jsonArray.map { it.jsonObject }.map { obj ->
                 MangaDto(
@@ -45,7 +45,7 @@ class Bilibili : Source {
             }
         }
 
-    override suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> =
+    override suspend fun getBoardImpl(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> =
         when (boardId) {
             Board.Popular.id -> if (page > 0) emptyList() else api.getHomeHot(filters["type"]!!)
                 .body<JsonObject>()
@@ -94,7 +94,7 @@ class Bilibili : Source {
             else -> throw Error("board not found")
         }
 
-    override suspend fun getManga(mangaId: String): MangaDetailDto =
+    override suspend fun getMangaImpl(mangaId: String): MangaDetailDto =
         api.getComicDetail(mangaId)
             .body<JsonObject>()
             .let { it["data"]!!.jsonObject }
@@ -123,7 +123,7 @@ class Bilibili : Source {
                 )
             }
 
-    override suspend fun getContent(mangaId: String, collectionId: String, chapterId: String): List<String> =
+    override suspend fun getContentImpl(mangaId: String, chapterId: String): List<String> =
         api.getImageIndex(chapterId)
             .body<JsonObject>()
             .let { it["data"]!!.jsonObject }
@@ -138,7 +138,7 @@ class Bilibili : Source {
             }
 
 
-    override suspend fun getImage(url: String) = withContext(Dispatchers.IO) {
+    override suspend fun getImageImpl(url: String) = withContext(Dispatchers.IO) {
         api.getImage(url).let {
             Image(
                 it.contentType(),

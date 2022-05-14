@@ -3,59 +3,57 @@ package me.fishhawk.lisu.library
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.source.Board
 import me.fishhawk.lisu.source.BoardModel
+import me.fishhawk.lisu.then
 import java.nio.file.Path
 import kotlin.io.path.*
 
 class Library(private val path: Path) {
     val id = path.name
 
+    fun listMangas(): List<Manga> {
+        return path.listDirectory()
+            .getOrDefault(emptyList())
+            .sortedByDescending { it.getLastModifiedTime() }
+            .map { Manga(it) }
+    }
+
     fun search(page: Int, keywords: String): List<MangaDto> {
         val filters = Filter.fromKeywords(keywords)
-        val pageSize = 100
-        return path.listDirectory()
-            .sortedByDescending { it.getLastModifiedTime() }
+        return listMangas()
             .asSequence()
-            .map { Manga(it) }
-            .filter { manga ->
-                filters.all {
-                    it.isPass(manga.getSearchEntry())
-                }
-            }
-            .drop(pageSize * page)
-            .take(pageSize)
+            .filter { manga -> filters.all { it.isPass(manga.getSearchEntry()) } }
+            .page(page = page, pageSize = 100)
             .map { it.get() }
             .toList()
     }
 
-    fun getBoard(boardId: String, page: Int): List<MangaDto> =
-        when (boardId) {
+    fun getBoard(boardId: String, page: Int): List<MangaDto>? {
+        return when (boardId) {
             Board.Latest.id -> search(page, "")
             else -> null
-        } ?: throw Error("board not found")
-
-    fun createManga(id: String): Manga? {
-        return getMangaPath(id)
-            .takeIf { it.notExists() }
-            ?.let { Manga(it.createDirectories()) }
+        }
     }
 
-    fun deleteManga(id: String): Boolean {
+    private fun getMangaPath(id: String): Result<Path> {
+        return path.resolveChild(id)
+    }
+
+    fun createManga(id: String): Result<Manga> {
         return getMangaPath(id)
-            .takeIf { it.isDirectory() }
-            ?.let {
-                it.toFile().deleteRecursively()
-                true
-            } ?: false
+            .then(Path::createDirAll)
+            .map { Manga(it) }
+    }
+
+    fun deleteManga(id: String): Result<Unit> {
+        return getMangaPath(id)
+            .then(Path::deleteDirAll)
     }
 
     fun getManga(id: String): Manga? {
         return getMangaPath(id)
-            .takeIf { it.isDirectory() }
+            .getOrNull()
+            ?.takeIf { it.isDirectory() }
             ?.let { Manga(it) }
-    }
-
-    private fun getMangaPath(id: String): Path {
-        return path.resolve(id)
     }
 
     companion object {

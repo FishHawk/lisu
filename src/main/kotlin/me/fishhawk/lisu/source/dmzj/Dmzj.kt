@@ -6,7 +6,7 @@ import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.source.BoardModel
 import me.fishhawk.lisu.source.Source
 
-class Dmzj : Source {
+class Dmzj : Source() {
     override val id: String = "动漫之家"
     override val lang: String = "zh"
     override val boardModels: Map<String, BoardModel> = mapOf(
@@ -18,23 +18,23 @@ class Dmzj : Source {
         )
     )
 
-    override suspend fun search(page: Int, keywords: String): List<MangaDto> {
+    override suspend fun searchImpl(page: Int, keywords: String): List<MangaDto> {
         TODO("Not yet implemented")
     }
 
-    override suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> {
+    override suspend fun getBoardImpl(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> {
         TODO("Not yet implemented")
     }
 
-    override suspend fun getManga(mangaId: String): MangaDetailDto {
+    override suspend fun getMangaImpl(mangaId: String): MangaDetailDto {
         TODO("Not yet implemented")
     }
 
-    override suspend fun getContent(mangaId: String, collectionId: String, chapterId: String): List<String> {
+    override suspend fun getContentImpl(mangaId: String, chapterId: String): List<String> {
         TODO("Not yet implemented")
     }
 
-    override suspend fun getImage(url: String): Image {
+    override suspend fun getImageImpl(url: String): Image {
         TODO("Not yet implemented")
     }
 }

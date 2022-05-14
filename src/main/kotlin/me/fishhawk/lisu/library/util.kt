@@ -1,80 +1,91 @@
 package me.fishhawk.lisu.library
 
-import kotlinx.serialization.Serializable
+import me.fishhawk.lisu.runCatchingException
 import se.sawano.java.text.AlphanumericComparator
-import java.nio.file.Files
-import java.nio.file.Path
+import java.io.File
+import java.nio.charset.Charset
+import java.nio.file.*
+import java.nio.file.attribute.FileAttribute
 import java.util.*
-import kotlin.io.path.extension
-import kotlin.io.path.isDirectory
-import kotlin.io.path.isRegularFile
-import kotlin.io.path.name
+import kotlin.io.path.*
 
-// hack, see https://stackoverflow.com/questions/48448000/kotlins-extension-method-stream-tolist-is-missing
-import kotlin.streams.toList
+fun <T> Sequence<T>.page(page: Int, pageSize: Int): Sequence<T> =
+    drop(pageSize * page).take(pageSize)
 
-fun Path.listImageFiles(): List<Path> = Files.list(this).filter { it.isImageFile() }.toList()
-
-fun Path.listDirectory(): List<Path> = Files.list(this).filter { it.isDirectory() }.toList()
-
-fun Iterable<Path>.sortedAlphanumeric(): List<Path> {
-    return sortedWith(alphanumericOrder())
+class IllegalChildPathException(dir: String, other: String) :
+    FileSystemException(dir, other, "illegal child path") {
+//    companion object {
+//        private const val serialVersionUID = 3056667871802779003L
+//    }
 }
 
-fun alphanumericOrder(): Comparator<Path> = object : Comparator<Path> {
+fun Any?.discard() = Unit
+
+fun Path.resolveChild(other: String) =
+    if (
+        other == "" ||
+        other == "." ||
+        other == ".." ||
+        other.contains(File.separator)
+    ) {
+        Result.failure(IllegalChildPathException(this.toString(), other))
+    } else {
+        Result.success(resolve(other))
+    }
+
+fun Path.list(filter: (Path) -> Boolean) =
+    runCatchingException { listDirectoryEntries().filter(filter) }
+
+fun Path.listFiles() = list { it.isRegularFile() }
+fun Path.listDirectory() = list { it.isDirectory() }
+fun Path.listImageFiles() = list { it.isImageFile() }
+
+fun Path.createFile(vararg attributes: FileAttribute<*>) =
+    runCatchingException { Files.createFile(this, *attributes) }
+
+fun Path.createDir(vararg attributes: FileAttribute<*>) =
+    runCatchingException { Files.createDirectory(this, *attributes) }
+
+fun Path.createDirAll(vararg attributes: FileAttribute<*>) =
+    runCatchingException { Files.createDirectories(this, *attributes) }
+
+fun Path.delete() =
+    runCatchingException { Files.delete(this) }
+
+fun Path.deleteDirAll() =
+    runCatchingException {
+        Files.walk(this)
+            .sorted(Comparator.reverseOrder())
+            .forEach { it.deleteExisting() }
+    }
+
+fun Path.inputStream(vararg options: OpenOption) =
+    runCatchingException { Files.newInputStream(this, *options) }
+
+fun Path.outputStream(vararg options: OpenOption) =
+    runCatchingException { Files.newOutputStream(this, *options) }
+
+fun Path.readText(charset: Charset = Charsets.UTF_8) =
+    runCatchingException { reader(charset).use { it.readText() } }
+
+fun Path.writeText(text: CharSequence, charset: Charset = Charsets.UTF_8, vararg options: OpenOption) =
+    runCatchingException {
+        Files.newOutputStream(this, *options)
+            .writer(charset)
+            .use { it.append(text) }
+            .discard()
+    }
+
+fun Path.setDosHidden() =
+    runCatchingException { setAttribute("dos:hidden", true, LinkOption.NOFOLLOW_LINKS) }
+
+fun Iterable<Path>.sortedAlphanumeric() =
+    sortedWith(alphanumericOrder())
+
+fun <T> alphanumericOrder(): Comparator<T> = object : Comparator<T> {
     val comparator = AlphanumericComparator(Locale.getDefault())
-    override fun compare(p0: Path, p1: Path): Int = comparator.compare(p0.name, p1.name)
+    override fun compare(p0: T, p1: T): Int = comparator.compare(p0.toString(), p1.toString())
 }
 
 private val imageExtensions = listOf("bmp", "jpeg", "jpg", "png", "gif", "webp")
 fun Path.isImageFile() = isRegularFile() && extension.lowercase() in imageExtensions
-
-@Serializable
-data class SearchEntry(
-    val title: String? = null,
-    val authors: List<String>? = null,
-    val tags: Map<String, List<String>>? = null
-)
-
-class Filter(
-    private val key: String?,
-    private val value: String,
-    private val isExclusionMode: Boolean,
-    private val isExactMode: Boolean
-) {
-    private fun isKeyMatch(key: String) = this.key == null || this.key == key
-
-    private fun isIvsMatched(ivs: List<String>) =
-        if (this.isExactMode) !ivs.contains(this.value)
-        else ivs.any { it.contains(this.value) }
-
-    fun isPass(entry: SearchEntry): Boolean {
-        val iv1 = if (key == null) (entry.authors.orEmpty() + entry.title).filterNotNull() else emptyList()
-        val iv2 = entry.tags?.flatMap { if (isKeyMatch(it.key)) it.value else emptyList() }.orEmpty()
-        return isIvsMatched(iv1 + iv2) != isExclusionMode
-    }
-
-    companion object {
-        fun fromKeywords(keywords: String): List<Filter> {
-            return keywords.split(';')
-                .mapNotNull { fromToken(it.trim()) }
-        }
-
-        private fun fromToken(toke: String): Filter? {
-            var token = toke
-
-            if (token.isBlank()) return null
-
-            val isExclusionMode = token.startsWith('-')
-            if (isExclusionMode) token = token.substring(1)
-
-            val isExactMode = token.endsWith('$');
-            if (isExactMode) token = token.substring(0, token.length - 1)
-
-            val splitPosition = token.indexOf(':')
-            val key = if (splitPosition != -1) token.substring(0, splitPosition) else null
-            val value = if (splitPosition != -1) token.substring(splitPosition + 1, token.length) else token
-            return Filter(key, value, isExclusionMode, isExactMode)
-        }
-    }
-}
