@@ -2,12 +2,9 @@ package me.fishhawk.lisu.library
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
-import me.fishhawk.lisu.mapCatchingException
 import me.fishhawk.lisu.model.*
-import me.fishhawk.lisu.runCatchingException
-import me.fishhawk.lisu.then
+import me.fishhawk.lisu.util.*
 import java.nio.file.Path
-import kotlin.io.path.*
 
 private val json = Json { ignoreUnknownKeys = true }
 
@@ -23,7 +20,6 @@ class Manga(val path: Path) {
             ?.let { if (it.title == null) it.copy(title = id) else it }
             ?: SearchEntry(title = id)
     }
-
 
     fun get(): MangaDto {
         return parseMetadataAs(MangaMetadataDto.serializer())
@@ -76,10 +72,10 @@ class Manga(val path: Path) {
     }
 
     private val metadataPath
-        get() = path / "metadata.json"
+        get() = path.resolve("metadata.json")
 
     fun hasMetadata(): Boolean {
-        return metadataPath.exists()
+        return metadataPath.isRegularFile()
     }
 
     private fun <T> parseMetadataAs(serializer: KSerializer<T>): T? {
@@ -114,7 +110,7 @@ class Manga(val path: Path) {
             .getOrNull()
             ?.filter { it.nameWithoutExtension == "cover" }
             ?.onEach { it.delete() }
-        return (path / "cover.${cover.ext}")
+        return path.resolve("cover.${cover.ext}")
             .outputStream()
             .map { cover.stream.copyTo(it).discard() }
     }

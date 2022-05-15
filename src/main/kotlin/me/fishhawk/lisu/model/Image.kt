@@ -3,9 +3,9 @@ package me.fishhawk.lisu.model
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
+import me.fishhawk.lisu.util.inputStream
 import java.io.InputStream
 import java.nio.file.Path
-import kotlin.io.path.inputStream
 
 data class Image(
     val mime: ContentType?,
@@ -17,7 +17,11 @@ data class Image(
     }
 }
 
-fun Path.toImage() = Image(null, this.inputStream())
+fun Path.toImage(): Image? {
+    return inputStream()
+        .getOrNull()
+        ?.let { Image(null, it) }
+}
 
 suspend fun ApplicationCall.respondImage(image: Image) {
     respondOutputStream(image.mime) { image.stream.copyTo(this) }

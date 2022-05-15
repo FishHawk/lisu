@@ -1,4 +1,4 @@
-package me.fishhawk.lisu
+package me.fishhawk.lisu.util
 
 inline fun <R> runCatchingException(block: () -> R): Result<R> {
     return try {

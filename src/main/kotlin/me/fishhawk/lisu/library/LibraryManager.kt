@@ -1,9 +1,8 @@
 package me.fishhawk.lisu.library
 
 import me.fishhawk.lisu.model.MangaDto
-import me.fishhawk.lisu.then
+import me.fishhawk.lisu.util.*
 import java.nio.file.Path
-import kotlin.io.path.*
 
 class LibraryManager(private val path: Path) {
     fun listLibraries() =

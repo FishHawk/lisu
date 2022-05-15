@@ -3,7 +3,7 @@ package me.fishhawk.lisu.source
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
-import me.fishhawk.lisu.runCatchingException
+import me.fishhawk.lisu.util.runCatchingException
 
 typealias BoardModel = Map<String, List<String>>
 

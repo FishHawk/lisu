@@ -8,7 +8,9 @@ import me.fishhawk.lisu.library.Manga
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.toMetadataDetail
 import me.fishhawk.lisu.source.Source
-import me.fishhawk.lisu.then
+import me.fishhawk.lisu.util.forEachIndexedParallel
+import me.fishhawk.lisu.util.retry
+import me.fishhawk.lisu.util.then
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("downloader")
@@ -211,31 +213,4 @@ private suspend fun downloadImages(
         }
         .onFailure { hasImageError = true }
     return hasImageError
-}
-
-private suspend inline fun <T, C : Iterable<T>> C.forEachIndexedParallel(
-    limit: Int,
-    crossinline action: suspend (index: Int, T) -> Unit
-) = coroutineScope {
-    val executing = mutableListOf<Deferred<Unit>>()
-    forEachIndexed { index, value ->
-        executing.add(async { action(index, value) })
-        if (executing.size >= limit)
-            select<Unit> { executing.onEach { it.onJoin { } } }
-        executing.removeIf { it.isCompleted }
-    }
-    executing.awaitAll()
-}
-
-private suspend fun <T> retry(
-    times: Int,
-    backoff: Long = 100,
-    block: suspend () -> Result<T>
-): Result<T> {
-    repeat(times - 1) {
-        val result = block()
-        if (result.isSuccess) return result
-        delay(backoff)
-    }
-    return block()
 }

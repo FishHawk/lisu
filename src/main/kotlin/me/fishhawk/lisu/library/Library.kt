@@ -3,9 +3,11 @@ package me.fishhawk.lisu.library
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.source.Board
 import me.fishhawk.lisu.source.BoardModel
-import me.fishhawk.lisu.then
+import me.fishhawk.lisu.util.*
 import java.nio.file.Path
-import kotlin.io.path.*
+
+fun <T> Sequence<T>.page(page: Int, pageSize: Int): Sequence<T> =
+    drop(pageSize * page).take(pageSize)
 
 class Library(private val path: Path) {
     val id = path.name
