@@ -12,6 +12,7 @@ import io.ktor.server.routing.*
 import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.model.Image
+import me.fishhawk.lisu.model.MangaKeyDto
 import me.fishhawk.lisu.model.MangaMetadataDto
 
 @OptIn(KtorExperimentalLocationsAPI::class)
@@ -22,14 +23,29 @@ private object LibraryLocation {
     @Location("/library/random-manga")
     object RandomManga
 
+    @Location("/library/start")
+    object StartAll
+
+    @Location("/library/pause")
+    object PauseAll
+
     @Location("/library/manga/{providerId}/{mangaId}")
     data class Manga(val providerId: String, val mangaId: String)
+
+    @Location("/library/manga/{providerId}/{mangaId}/pause")
+    data class StartManga(val providerId: String, val mangaId: String)
+
+    @Location("/library/manga/{providerId}/{mangaId}/pause")
+    data class PauseManga(val providerId: String, val mangaId: String)
 
     @Location("/library/manga/{providerId}/{mangaId}/cover")
     data class Cover(val providerId: String, val mangaId: String, val imageId: String)
 
     @Location("/library/manga/{providerId}/{mangaId}/metadata")
     data class Metadata(val providerId: String, val mangaId: String)
+
+    @Location("/library/manga-delete")
+    object MangaDelete
 }
 
 @OptIn(KtorExperimentalLocationsAPI::class)
@@ -47,17 +63,37 @@ fun Route.libraryRoutes(
         call.respond(manga)
     }
 
+    post<LibraryLocation.StartAll> {
+        downloader.startAll()
+        call.respond("Success")
+    }
+
+    post<LibraryLocation.PauseAll> {
+        downloader.pauseAll()
+        call.respond("Success")
+    }
+
     post<LibraryLocation.Manga> { loc ->
         val library = libraryManager.getLibrary(loc.providerId)
             ?: libraryManager.createLibrary(loc.providerId).getOrThrow()
         library.createManga(loc.mangaId)
+            .onSuccess {
+                call.respondText("Success")
+                downloader.add(loc.providerId, loc.mangaId)
+            }
             .onFailure {
                 call.respondText(status = HttpStatusCode.Conflict, text = "conflict")
             }
-            .onSuccess {
-                call.respondText(status = HttpStatusCode.OK, text = "success")
-                downloader.add(loc.providerId, loc.mangaId)
-            }
+    }
+
+    post<LibraryLocation.StartManga> { loc ->
+        downloader.start(loc.providerId, loc.mangaId)
+        call.respond("Success")
+    }
+
+    post<LibraryLocation.PauseManga> { loc ->
+        downloader.pause(loc.providerId, loc.mangaId)
+        call.respond("Success")
     }
 
     delete<LibraryLocation.Manga> { loc ->
@@ -65,7 +101,7 @@ fun Route.libraryRoutes(
         library.deleteManga(loc.mangaId)
             .onSuccess {
                 downloader.remove(loc.providerId, loc.mangaId)
-                call.respondText(status = HttpStatusCode.OK, text = "success")
+                call.respondText("Success")
             }
             .onFailure {
                 call.respondText(status = HttpStatusCode.NotFound, text = "manga")
@@ -90,5 +126,16 @@ fun Route.libraryRoutes(
             ?: throw HttpException.NotFound("manga")
         manga.setMetadata(metadata)
         call.response.status(HttpStatusCode.NoContent)
+    }
+
+    post<LibraryLocation.MangaDelete> {
+        val mangaKeys = call.receive<List<MangaKeyDto>>()
+        val isFail = mangaKeys.map {
+            libraryManager
+                .getLibrary(it.providerId)
+                ?.deleteManga(it.id)
+        }.any { it == null || it.isFailure }
+        if (isFail) call.response.status(HttpStatusCode.OK)
+        else call.response.status(HttpStatusCode.InternalServerError)
     }
 }

@@ -5,8 +5,14 @@ import kotlinx.serialization.Serializable
 const val DefaultTagName = ""
 
 @Serializable
+data class MangaKeyDto(
+    val providerId: String,
+    val id: String,
+)
+
+@Serializable
 data class MangaDto(
-    val inLibrary: Boolean = true,
+    val inLibrary: Boolean = false,
 
     val providerId: String,
     val id: String,
@@ -20,7 +26,7 @@ data class MangaDto(
 
 @Serializable
 data class MangaDetailDto(
-    val inLibrary: Boolean = true,
+    val inLibrary: Boolean = false,
 
     val providerId: String,
     val id: String,

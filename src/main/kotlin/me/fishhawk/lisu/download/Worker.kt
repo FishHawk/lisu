@@ -1,7 +1,6 @@
 package me.fishhawk.lisu.download
 
 import kotlinx.coroutines.*
-import kotlinx.coroutines.selects.select
 import me.fishhawk.lisu.library.Chapter
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.library.Manga
@@ -60,6 +59,7 @@ class Worker(
                     paused.add(mangaId)
                     log.info("Unexpected download error: ${source.id} $mangaId $throwable")
                 } finally {
+                    log.info("Download finish: ${source.id} $mangaId")
                     waiting.remove(mangaId)
                 }
             }
@@ -76,6 +76,17 @@ class Worker(
     }
 
     suspend fun updateLibrary() = withContext(context) {
+        libraryManager
+            .getLibrary(source.id)
+            ?.listMangas()
+            ?.filter { it.get().isFinished != true }
+            ?.map { it.id }
+            ?.toSet()
+            ?.let {
+                paused.removeAll(it)
+                waiting.addAll(it)
+            }
+        launchJob()
     }
 
     suspend fun start(mangaId: String) {

@@ -41,7 +41,7 @@ dependencies {
     implementation("com.moandjiezana.toml:toml4j:0.7.2")
     implementation("cc.ekblad:4koma:1.0.1")
 
-    val krontabVersion = "0.7.1"
+    val krontabVersion = "0.7.2"
     implementation("dev.inmo:krontab:$krontabVersion")
 
     val kotestVersion = "5.2.2"
