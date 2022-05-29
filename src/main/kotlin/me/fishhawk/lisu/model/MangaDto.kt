@@ -11,8 +11,13 @@ data class MangaKeyDto(
 )
 
 @Serializable
+enum class MangaState {
+    Local, Remote, RemoteInLibrary
+}
+
+@Serializable
 data class MangaDto(
-    val inLibrary: Boolean = false,
+    val state: MangaState = MangaState.Local,
 
     val providerId: String,
     val id: String,
@@ -26,7 +31,7 @@ data class MangaDto(
 
 @Serializable
 data class MangaDetailDto(
-    val inLibrary: Boolean = false,
+    val state: MangaState = MangaState.Local,
 
     val providerId: String,
     val id: String,

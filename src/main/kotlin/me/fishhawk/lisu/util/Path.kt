@@ -2,6 +2,7 @@ package me.fishhawk.lisu.util
 
 import se.sawano.java.text.AlphanumericComparator
 import java.io.File
+import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.nio.file.*
 import java.nio.file.attribute.FileAttribute
@@ -92,7 +93,31 @@ fun Path.writeText(text: CharSequence, charset: Charset = Charsets.UTF_8, vararg
     }
 
 fun Path.setDosHidden() =
-    runCatchingException { setAttribute("dos:hidden", true, LinkOption.NOFOLLOW_LINKS) }
+    runCatchingException {
+        setAttribute(
+            "dos:hidden",
+            true,
+            LinkOption.NOFOLLOW_LINKS
+        )
+    }
+
+fun Path.setFileDescription(title:String) =
+    runCatchingException {
+        setAttribute(
+            "user:Doc.Title",
+            ByteBuffer.wrap(title.toByteArray()),
+            LinkOption.NOFOLLOW_LINKS
+        )
+    }
+
+fun Path.setUserXorgComment(comment: String) =
+    runCatchingException {
+        setAttribute(
+            "user:xdg.comment",
+            ByteBuffer.wrap(comment.toByteArray()),
+            LinkOption.NOFOLLOW_LINKS
+        )
+    }
 
 fun Path.getLastModifiedTime(vararg options: LinkOption): FileTime =
     Files.getLastModifiedTime(this, *options)

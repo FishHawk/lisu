@@ -24,6 +24,8 @@ class Downloader(
         offset = TimeZone.getDefault().rawOffset / 1000 / 60
     ) {
         hours { at(4) }
+        minutes { at(0) }
+        seconds { at(0) }
     }
 
     init {

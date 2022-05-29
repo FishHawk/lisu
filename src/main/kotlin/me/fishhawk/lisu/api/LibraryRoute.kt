@@ -11,9 +11,8 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
-import me.fishhawk.lisu.model.Image
-import me.fishhawk.lisu.model.MangaKeyDto
-import me.fishhawk.lisu.model.MangaMetadataDto
+import me.fishhawk.lisu.model.*
+import me.fishhawk.lisu.source.SourceManager
 
 @OptIn(KtorExperimentalLocationsAPI::class)
 private object LibraryLocation {
@@ -51,15 +50,21 @@ private object LibraryLocation {
 @OptIn(KtorExperimentalLocationsAPI::class)
 fun Route.libraryRoutes(
     libraryManager: LibraryManager,
+    sourceManager: SourceManager,
     downloader: Downloader
 ) {
+    fun MangaDto.updateMangaState() =
+        copy(state = if (sourceManager.hasSource(providerId)) MangaState.RemoteInLibrary else MangaState.Local)
+
     get<LibraryLocation.Search> { loc ->
         val mangaList = libraryManager.search(loc.page, loc.keywords)
+            .map { it.updateMangaState() }
         call.respond(mangaList)
     }
 
     get<LibraryLocation.RandomManga> {
         val manga = libraryManager.getRandomManga().get()
+            .updateMangaState()
         call.respond(manga)
     }
 

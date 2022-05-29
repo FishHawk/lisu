@@ -26,6 +26,8 @@ import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.api.ProviderManager
 import me.fishhawk.lisu.source.SourceManager
+import me.fishhawk.lisu.util.setFileDescription
+import me.fishhawk.lisu.util.setUserXorgComment
 import kotlin.io.path.Path
 
 fun main(args: Array<String>) {
@@ -61,6 +63,7 @@ private fun Application.lisuModule(
         json(Json {
             prettyPrint = true
             isLenient = true
+            encodeDefaults = true
         })
     }
 
@@ -86,7 +89,7 @@ private fun Application.lisuModule(
     }
 
     routing {
-        libraryRoutes(libraryManager, downloader)
+        libraryRoutes(libraryManager, sourceManager, downloader)
         providerRoutes(providerManager)
         systemRoutes()
     }

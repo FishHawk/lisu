@@ -54,8 +54,6 @@ class Manga(val path: Path) {
                     providerId = providerId,
                     id = id,
 
-                    inLibrary = true,
-
                     cover = null,
                     updateTime = path.getLastModifiedTime().toInstant().epochSecond,
 

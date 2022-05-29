@@ -8,7 +8,6 @@ import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.*
-import kotlinx.serialization.json.Json
 import me.fishhawk.lisu.library.Library
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.model.*
@@ -125,16 +124,25 @@ interface Provider {
 class LocalProvider(
     private val library: Library
 ) : Provider {
+    private fun MangaDto.updateMangaState() =
+        copy(state = MangaState.Local)
+
+    private fun MangaDetailDto.updateMangaState() =
+        copy(state = MangaState.Local)
+
     override suspend fun search(page: Int, keywords: String): List<MangaDto> {
         return library.search(page, keywords)
+            .map { it.updateMangaState() }
     }
 
     override suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto>? {
         return library.getBoard(boardId, page)
+            ?.map { it.updateMangaState() }
     }
 
     override suspend fun getManga(mangaId: String): MangaDetailDto? {
         return library.getManga(mangaId)?.getDetail()
+            ?.updateMangaState()
     }
 
     override suspend fun getCover(mangaId: String, imageId: String): Image? {
@@ -154,6 +162,12 @@ class RemoteProvider(
     private val source: Source,
     private val library: Library?
 ) : Provider {
+    private fun MangaDto.updateMangaState() =
+        copy(state = if (library?.getManga(id) == null) MangaState.Remote else MangaState.RemoteInLibrary)
+
+    private fun MangaDetailDto.updateMangaState() =
+        copy(state = if (library?.getManga(id) == null) MangaState.Remote else MangaState.RemoteInLibrary)
+
     fun getIcon(): Image? {
         return source::class.java.getResourceAsStream("icon.png")
             ?.let { Image(ContentType.Image.PNG, it) }
@@ -161,17 +175,17 @@ class RemoteProvider(
 
     override suspend fun search(page: Int, keywords: String): List<MangaDto> {
         return source.search(page, keywords).getOrThrow()
-            .map { it.copy(inLibrary = library?.getManga(it.id) != null) }
+            .map { it.updateMangaState() }
     }
 
     override suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> {
         return source.getBoard(boardId, page, filters).getOrThrow()
-            .map { it.copy(inLibrary = library?.getManga(it.id) != null) }
+            .map { it.updateMangaState() }
     }
 
     override suspend fun getManga(mangaId: String): MangaDetailDto {
         return source.getManga(mangaId).getOrThrow()
-            .copy(inLibrary = library?.getManga(mangaId) != null)
+            .updateMangaState()
     }
 
     override suspend fun getCover(mangaId: String, imageId: String): Image? {
