@@ -38,7 +38,7 @@ private object LibraryLocation {
     data class PauseManga(val providerId: String, val mangaId: String)
 
     @Location("/library/manga/{providerId}/{mangaId}/cover")
-    data class Cover(val providerId: String, val mangaId: String, val imageId: String)
+    data class Cover(val providerId: String, val mangaId: String)
 
     @Location("/library/manga/{providerId}/{mangaId}/metadata")
     data class Metadata(val providerId: String, val mangaId: String)
@@ -115,7 +115,7 @@ fun Route.libraryRoutes(
 
     put<LibraryLocation.Cover> { loc ->
         call.receiveMultipart().forEachPart { part ->
-            if (part is PartData.FileItem && part.originalFileName == "cover") {
+            if (part is PartData.FileItem && part.name == "cover") {
                 libraryManager.getLibrary(loc.providerId)
                     ?.getManga(loc.mangaId).ensure("manga")
                     .setCover(Image(part.contentType, part.streamProvider()))
