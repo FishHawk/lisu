@@ -12,7 +12,7 @@ import me.fishhawk.lisu.source.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class Bilibili : Source() {
+class Bilibili : LoginSource() {
     override val id: String = "哔哩哔哩漫画"
     override val lang: String = "zh"
 
@@ -28,7 +28,15 @@ class Bilibili : Source() {
         )
     )
 
-    private val api = Api()
+    val api = Api()
+
+    override val loginSite = "https://manga.bilibili.com/"
+    override suspend fun login(cookies: Map<String, String>): Boolean {
+        return cookies[Api.SESSDATA]?.let { api.login(it) } ?: false
+    }
+    override suspend fun isLogged(): Boolean {
+        return api.isLogged()
+    }
 
     override suspend fun searchImpl(page: Int, keywords: String): List<MangaDto> =
         api.search(page, keywords).body<JsonObject>().let { json ->
@@ -92,14 +100,13 @@ class Bilibili : Source() {
                     )
                 }
             else -> throw Error("board not found")
-        }
+        }.also { println(it) }
 
     override suspend fun getMangaImpl(mangaId: String): MangaDetailDto =
         api.getComicDetail(mangaId)
             .body<JsonObject>()
             .let { it["data"]!!.jsonObject }
             .let { obj ->
-                println(obj)
                 MangaDetailDto(
                     providerId = id,
                     id = obj["id"]!!.jsonPrimitive.content,

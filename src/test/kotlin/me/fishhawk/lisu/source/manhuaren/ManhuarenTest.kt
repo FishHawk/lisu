@@ -2,6 +2,7 @@ package me.fishhawk.lisu.source.manhuaren
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
 import me.fishhawk.lisu.source.saveTestImage
 
@@ -10,30 +11,37 @@ class ManhuarenTest : DescribeSpec({
         val source = Manhuaren()
 
         it("#search") {
-            source.searchImpl(0, "龙珠超").first().title.shouldBe("龙珠超")
+            source.search(0, "龙珠超").shouldBeSuccess()
+                .first().title.shouldBe("龙珠超")
         }
 
         it("#getBoard") {
-            source.getBoardImpl("popular", 0, mapOf("type" to 0)).shouldNotBeEmpty()
-            source.getBoardImpl("latest", 0, mapOf("type" to 0)).shouldNotBeEmpty()
-            source.getBoardImpl("latest", 0, mapOf("type" to 1)).shouldNotBeEmpty()
-            source.getBoardImpl("category", 0, mapOf("type" to 0, "status" to 0)).shouldNotBeEmpty()
+            listOf(
+                source.getBoard("popular", 0, mapOf("type" to 0)),
+                source.getBoard("latest", 0, mapOf("type" to 0)),
+                source.getBoard("latest", 0, mapOf("type" to 1)),
+                source.getBoard("category", 0, mapOf("type" to 0, "status" to 0)),
+            ).forEach {
+                it.shouldBeSuccess().shouldNotBeEmpty()
+            }
         }
 
         val mangaId = "18657"
         val chapterId = "1012028"
 
         it("#getManga") {
-            source.getMangaImpl(mangaId).title.shouldBe("龙珠超")
+            source.getManga(mangaId).shouldBeSuccess()
+                .title.shouldBe("龙珠超")
         }
 
         it("#getChapter") {
-            source.getContentImpl(mangaId, chapterId).shouldNotBeEmpty()
+            source.getContent(mangaId, chapterId).shouldBeSuccess()
+                .shouldNotBeEmpty()
         }
 
         it("#getImage") {
-            val url = source.getContentImpl(mangaId, chapterId).first()
-            val image = source.getImageImpl(url)
+            val url = source.getContent(mangaId, chapterId).shouldBeSuccess().first()
+            val image = source.getImage(url).shouldBeSuccess()
             source.saveTestImage(image)
         }
     }

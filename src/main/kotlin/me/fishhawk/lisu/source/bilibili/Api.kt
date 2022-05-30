@@ -3,21 +3,55 @@ package me.fishhawk.lisu.source.bilibili
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.util.date.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import java.time.ZonedDateTime
 
 class Api {
+    private val cookiesStorage = AcceptAllCookiesStorage()
     private val client = HttpClient(CIO) {
+        install(HttpCookies) {
+            storage = cookiesStorage
+        }
         install(ContentNegotiation) {
             json(Json {
                 prettyPrint = true
                 isLenient = true
             })
+        }
+    }
+
+    private var isLogged = false
+
+    suspend fun isLogged() =
+        isLogged && cookiesStorage.get(Url("https://manga.bilibili.com")).any { it.name == SESSDATA }
+
+    suspend fun login(sessdata: String): Boolean {
+        cookiesStorage.addCookie(
+            "https://manga.bilibili.com",
+            Cookie(
+                name = SESSDATA,
+                value = sessdata,
+                expires = GMTDate(ZonedDateTime.now().plusDays(30 * 6).toInstant().toEpochMilli()),
+                domain = ".bilibili.com",
+                path = "/",
+                httpOnly = true,
+            )
+        )
+        val status = client.get("https://api.bilibili.com/x/web-interface/nav").status
+        return if (status == HttpStatusCode.OK) {
+            isLogged = true
+            true
+        } else {
+            isLogged = false
+            false
         }
     }
 
@@ -158,6 +192,8 @@ class Api {
     suspend fun getImage(url: String) = client.get(url)
 
     companion object {
+        val SESSDATA = "SESSDATA"
+
         val homeHotType = arrayOf(
             "免费榜" to 1, // 前7日人气最高的免费漫画作品排行
             "飙升榜" to 2, // 前7日新增追漫数最多的漫画作品排行

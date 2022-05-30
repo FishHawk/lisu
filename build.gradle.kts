@@ -16,8 +16,7 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.4")
 
-    val ktorVersion = "2.0.0"
-
+    val ktorVersion = "2.0.1"
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -44,7 +43,7 @@ dependencies {
     val krontabVersion = "0.7.2"
     implementation("dev.inmo:krontab:$krontabVersion")
 
-    val kotestVersion = "5.2.2"
+    val kotestVersion = "5.3.0"
     testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-ktor:4.4.3")

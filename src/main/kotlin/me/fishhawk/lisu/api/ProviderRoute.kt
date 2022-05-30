@@ -4,13 +4,16 @@ import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.locations.*
+import io.ktor.server.locations.post
 import io.ktor.server.plugins.cachingheaders.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.*
 import me.fishhawk.lisu.library.Library
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.model.*
+import me.fishhawk.lisu.source.LoginSource
 import me.fishhawk.lisu.source.Source
 import me.fishhawk.lisu.source.SourceManager
 
@@ -21,6 +24,9 @@ private object ProviderLocation {
 
     @Location("/provider/{providerId}/icon")
     data class Icon(val providerId: String)
+
+    @Location("/provider/{providerId}/login")
+    data class Login(val providerId: String)
 
     @Location("/provider/{providerId}/search")
     data class Search(val providerId: String, val page: Int, val keywords: String)
@@ -34,7 +40,7 @@ private object ProviderLocation {
     @Location("/provider/{providerId}/manga/{mangaId}/cover")
     data class Cover(val providerId: String, val mangaId: String, val imageId: String)
 
-    @Location("/provider/{providerId}/manga/{mangaId}/chapter/{collectionId}/{chapterId}")
+    @Location("/provider/{providerId}/manga/{mangaId}/content/{collectionId}/{chapterId}")
     data class Content(
         val providerId: String,
         val mangaId: String,
@@ -42,7 +48,7 @@ private object ProviderLocation {
         val chapterId: String
     )
 
-    @Location("/provider/{providerId}/manga/{mangaId}/chapter/{collectionId}/{chapterId}/image/{imageId}")
+    @Location("/provider/{providerId}/manga/{mangaId}/image/{collectionId}/{chapterId}/{imageId}")
     data class Image(
         val providerId: String,
         val mangaId: String,
@@ -72,6 +78,14 @@ fun Route.providerRoutes(providerManger: ProviderManager) {
         val provider = providerManger.getRemoteProvider(loc.providerId).ensure("provider")
         val image = provider.getIcon().ensure("icon")
         call.respondImage(image)
+    }
+
+    post<ProviderLocation.Login> { loc ->
+        val cookies = call.receive<Map<String, String>>()
+        val provider = providerManger.getRemoteProvider(loc.providerId).ensure("provider")
+        val isSuccess = provider.login(cookies)
+        if (isSuccess) call.respondText("Success")
+        else call.respondText(status = HttpStatusCode.InternalServerError, text = "")
     }
 
     get<ProviderLocation.Search> { loc ->
@@ -173,6 +187,11 @@ class RemoteProvider(
             ?.let { Image(ContentType.Image.PNG, it) }
     }
 
+    suspend fun login(cookies: Map<String, String>): Boolean {
+        return if (source is LoginSource) source.login(cookies)
+        else false
+    }
+
     override suspend fun search(page: Int, keywords: String): List<MangaDto> {
         return source.search(page, keywords).getOrThrow()
             .map { it.updateMangaState() }
@@ -211,11 +230,17 @@ class ProviderManager(
     private val libraryManager: LibraryManager,
     private val sourceManager: SourceManager
 ) {
-    fun listProvider(): List<ProviderDto> {
+    suspend fun listProvider(): List<ProviderDto> {
         val sources = sourceManager.listSources()
         val libraries = libraryManager.listLibraries()
 
-        val remoteProviders = sources.map { ProviderDto(it.id, it.lang, it.boardModels) }
+        val remoteProviders = sources.map {
+            if (it is LoginSource) {
+                ProviderDto(it.id, it.lang, it.boardModels, it.isLogged(), it.loginSite)
+            } else {
+                ProviderDto(it.id, it.lang, it.boardModels)
+            }
+        }
         val localProviders = libraries
             .filter { library -> sources.none { source -> source.id == library.id } }
             .map { ProviderDto(it.id, Library.lang, Library.boardModels) }

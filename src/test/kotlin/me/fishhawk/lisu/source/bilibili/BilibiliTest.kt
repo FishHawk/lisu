@@ -1,7 +1,10 @@
 package me.fishhawk.lisu.source.bilibili
 
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.booleans.shouldBeFalse
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
 import me.fishhawk.lisu.source.Board
 import me.fishhawk.lisu.source.saveTestImage
@@ -10,33 +13,46 @@ class BilibiliTest : DescribeSpec({
     describe("Source test: bilibili") {
         val source = Bilibili()
 
+        xit("#login") {
+            val secret = ""
+            source.isLogged().shouldBeFalse()
+            source.login(mapOf("SESSDATA" to secret)).shouldBeTrue()
+            source.isLogged().shouldBeTrue()
+        }
+
         it("#search") {
-            source.searchImpl(0, "迷宫饭").first().title.shouldBe("迷宫饭")
+            source.search(0, "迷宫饭").shouldBeSuccess()
+                .first().title.shouldBe("迷宫饭")
         }
 
         it("#getBoard") {
-            source.getBoardImpl(Board.Popular.id, 0, mapOf("type" to 0)).shouldNotBeEmpty()
-            source.getBoardImpl(Board.Latest.id, 0, emptyMap()).shouldNotBeEmpty()
-            source.getBoardImpl(
-                Board.Category.id, 0,
-                mapOf("style" to 0, "area" to 0, "isFinish" to 0, "isFree" to 0, "order" to 0)
-            ).shouldNotBeEmpty()
+            listOf(
+                source.getBoard(Board.Popular.id, 0, mapOf("type" to 0)),
+                source.getBoard(Board.Latest.id, 0, emptyMap()),
+                source.getBoard(
+                    Board.Category.id, 0,
+                    mapOf("style" to 0, "area" to 0, "isFinish" to 0, "isFree" to 0, "order" to 0)
+                ),
+            ).forEach {
+                it.shouldBeSuccess().shouldNotBeEmpty()
+            }
         }
 
         val mangaId = "28284"
         val chapterId = "466261"
 
         it("#getManga") {
-            source.getMangaImpl(mangaId).title.shouldBe("迷宫饭")
+            source.getManga(mangaId).shouldBeSuccess()
+                .title.shouldBe("迷宫饭")
         }
 
         it("#getChapter") {
-            source.getContentImpl(mangaId, chapterId).shouldNotBeEmpty()
+            source.getContent(mangaId, chapterId).shouldBeSuccess().shouldNotBeEmpty()
         }
 
         it("#getImage") {
-            val url = source.getContentImpl(mangaId, chapterId).first()
-            val image = source.getImageImpl(url)
+            val url = source.getContent(mangaId, chapterId).shouldBeSuccess().first()
+            val image = source.getImage(url).shouldBeSuccess()
             source.saveTestImage(image)
         }
     }

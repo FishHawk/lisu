@@ -2,13 +2,23 @@ package me.fishhawk.lisu.source.bilibili
 
 import io.kotest.assertions.ktor.client.shouldHaveStatus
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.booleans.shouldBeFalse
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.ktor.http.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.time.ExperimentalTime
 
 class ApiTest : DescribeSpec({
     describe("Source test: bilibili api") {
         val api = Api()
+
+        xit("#login") {
+            val secret = ""
+            api.isLogged().shouldBeFalse()
+            api.login(secret).shouldBeTrue()
+            api.isLogged().shouldBeTrue()
+        }
 
         it("#search") {
             api.search(0, "test").shouldHaveStatus(HttpStatusCode.OK)
