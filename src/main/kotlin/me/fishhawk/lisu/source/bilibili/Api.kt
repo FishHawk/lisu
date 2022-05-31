@@ -28,14 +28,16 @@ class Api {
         }
     }
 
-    private var isLogged = false
-
     suspend fun isLogged() =
-        isLogged && cookiesStorage.get(Url("https://manga.bilibili.com")).any { it.name == SESSDATA }
+        cookiesStorage.get(Url(baseUrl)).any { it.name == SESSDATA }
+
+    suspend fun logout() {
+        cookiesStorage.addCookie(baseUrl, Cookie(name = SESSDATA, value = "", expires = GMTDate.START))
+    }
 
     suspend fun login(sessdata: String): Boolean {
         cookiesStorage.addCookie(
-            "https://manga.bilibili.com",
+            baseUrl,
             Cookie(
                 name = SESSDATA,
                 value = sessdata,
@@ -46,13 +48,9 @@ class Api {
             )
         )
         val status = client.get("https://api.bilibili.com/x/web-interface/nav").status
-        return if (status == HttpStatusCode.OK) {
-            isLogged = true
-            true
-        } else {
-            isLogged = false
-            false
-        }
+        val isSuccess = status == HttpStatusCode.OK
+        if (!isSuccess) logout()
+        return isSuccess
     }
 
     private suspend fun post(url: String, bodyBuilder: () -> Any) =
@@ -192,6 +190,7 @@ class Api {
     suspend fun getImage(url: String) = client.get(url)
 
     companion object {
+        val baseUrl = "https://manga.bilibili.com"
         val SESSDATA = "SESSDATA"
 
         val homeHotType = arrayOf(

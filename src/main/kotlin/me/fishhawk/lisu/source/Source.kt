@@ -4,7 +4,6 @@ import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.util.runCatchingException
-import java.time.LocalDateTime
 
 typealias BoardModel = Map<String, List<String>>
 
@@ -42,6 +41,7 @@ abstract class Source {
 
 abstract class LoginSource : Source() {
     abstract val loginSite: String
-    abstract suspend fun login(cookies: Map<String,String>): Boolean
     abstract suspend fun isLogged(): Boolean
+    abstract suspend fun logout()
+    abstract suspend fun login(cookies: Map<String, String>): Boolean
 }

@@ -28,6 +28,9 @@ private object ProviderLocation {
     @Location("/provider/{providerId}/login")
     data class Login(val providerId: String)
 
+    @Location("/provider/{providerId}/logout")
+    data class Logout(val providerId: String)
+
     @Location("/provider/{providerId}/search")
     data class Search(val providerId: String, val page: Int, val keywords: String)
 
@@ -86,6 +89,12 @@ fun Route.providerRoutes(providerManger: ProviderManager) {
         val isSuccess = provider.login(cookies)
         if (isSuccess) call.respondText("Success")
         else call.respondText(status = HttpStatusCode.InternalServerError, text = "")
+    }
+
+    post<ProviderLocation.Logout> { loc ->
+        val provider = providerManger.getRemoteProvider(loc.providerId).ensure("provider")
+        provider.logout()
+        call.respondText("Success")
     }
 
     get<ProviderLocation.Search> { loc ->
@@ -190,6 +199,10 @@ class RemoteProvider(
     suspend fun login(cookies: Map<String, String>): Boolean {
         return if (source is LoginSource) source.login(cookies)
         else false
+    }
+
+    suspend fun logout() {
+        if (source is LoginSource) source.logout()
     }
 
     override suspend fun search(page: Int, keywords: String): List<MangaDto> {

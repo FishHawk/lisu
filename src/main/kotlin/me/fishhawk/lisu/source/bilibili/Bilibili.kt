@@ -30,12 +30,11 @@ class Bilibili : LoginSource() {
 
     val api = Api()
 
-    override val loginSite = "https://manga.bilibili.com/"
+    override val loginSite = Api.baseUrl
+    override suspend fun isLogged() = api.isLogged()
+    override suspend fun logout() = api.logout()
     override suspend fun login(cookies: Map<String, String>): Boolean {
         return cookies[Api.SESSDATA]?.let { api.login(it) } ?: false
-    }
-    override suspend fun isLogged(): Boolean {
-        return api.isLogged()
     }
 
     override suspend fun searchImpl(page: Int, keywords: String): List<MangaDto> =
