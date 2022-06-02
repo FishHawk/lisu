@@ -40,6 +40,9 @@ private object ProviderLocation {
     @Location("/provider/{providerId}/manga/{mangaId}")
     data class Manga(val providerId: String, val mangaId: String)
 
+    @Location("/provider/{providerId}/manga/{mangaId}/comment")
+    data class Comment(val providerId: String, val mangaId: String, val page: Int)
+
     @Location("/provider/{providerId}/manga/{mangaId}/cover")
     data class Cover(val providerId: String, val mangaId: String, val imageId: String)
 
@@ -114,6 +117,12 @@ fun Route.providerRoutes(providerManger: ProviderManager) {
         val provider = providerManger.getProvider(loc.providerId).ensure("provider")
         val mangaDetail = provider.getManga(loc.mangaId).ensure("manga")
         call.respond(mangaDetail)
+    }
+
+    get<ProviderLocation.Comment> { loc ->
+        val provider = providerManger.getRemoteProvider(loc.providerId).ensure("provider")
+        val comments = provider.getComments(loc.mangaId, loc.page).ensure("comment")
+        call.respond(comments)
     }
 
     get<ProviderLocation.Cover> { loc ->
@@ -204,6 +213,9 @@ class RemoteProvider(
     suspend fun logout() {
         if (source is LoginSource) source.logout()
     }
+
+    suspend fun getComments(mangaId: String, page: Int) =
+        source.getComment(mangaId, page).getOrThrow()
 
     override suspend fun search(page: Int, keywords: String): List<MangaDto> {
         return source.search(page, keywords).getOrThrow()

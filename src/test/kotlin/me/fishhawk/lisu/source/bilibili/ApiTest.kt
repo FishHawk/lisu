@@ -4,6 +4,8 @@ import io.kotest.assertions.ktor.client.shouldHaveStatus
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
+import io.ktor.client.call.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -47,6 +49,10 @@ class ApiTest : DescribeSpec({
 
         it("#getComicDetail") {
             api.getComicDetail("25522").shouldHaveStatus(HttpStatusCode.OK)
+        }
+
+        it("#getReply") {
+            api.getReply("25522", 1, 2).shouldHaveStatus(HttpStatusCode.OK)
         }
 
         it("#getChapterIndex") {

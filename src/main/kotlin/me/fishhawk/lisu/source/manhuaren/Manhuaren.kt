@@ -7,10 +7,7 @@ import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
-import me.fishhawk.lisu.model.ChapterDto
-import me.fishhawk.lisu.model.Image
-import me.fishhawk.lisu.model.MangaDetailDto
-import me.fishhawk.lisu.model.MangaDto
+import me.fishhawk.lisu.model.*
 import me.fishhawk.lisu.source.*
 
 class Manhuaren : Source() {
@@ -101,6 +98,10 @@ class Manhuaren : Source() {
                 }.filterValues { it.isNotEmpty() }
             )
         }
+
+    // TODO("Not yet implemented")
+    override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> =
+        emptyList()
 
     override suspend fun getContentImpl(mangaId: String, chapterId: String): List<String> =
         api.getRead(chapterId).body<JsonObject>().let { data ->

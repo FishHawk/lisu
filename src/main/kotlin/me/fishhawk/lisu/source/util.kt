@@ -24,8 +24,17 @@ internal fun JsonElement.asDateToEpochSecond(pattern: String) =
         .atZone(ZoneId.systemDefault())
         .toEpochSecond()
 
-internal val JsonArray.string: List<String> get() = map { it.jsonPrimitive.content }
-internal val JsonArray.obj: List<JsonObject> get() = map { it.jsonObject }
+internal val JsonElement.jsonObjectOrNull: JsonObject?
+    get() = this as? JsonObject
+
+internal val JsonElement.jsonArrayOrNull: JsonArray?
+    get() = this as? JsonArray
+
+internal val JsonArray.string: List<String>
+    get() = map { it.jsonPrimitive.content }
+
+internal val JsonArray.obj: List<JsonObject>
+    get() = map { it.jsonObject }
 
 internal fun Source.saveTestImage(image: Image) {
     Path("test-image").createDirAll()

@@ -1,6 +1,7 @@
 package me.fishhawk.lisu.source.dmzj
 
 import me.fishhawk.lisu.model.Image
+import me.fishhawk.lisu.model.CommentDto
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.source.BoardModel
@@ -27,6 +28,10 @@ class Dmzj : Source() {
     }
 
     override suspend fun getMangaImpl(mangaId: String): MangaDetailDto {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> {
         TODO("Not yet implemented")
     }
 

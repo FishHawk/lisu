@@ -5,6 +5,7 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.util.date.*
@@ -69,7 +70,6 @@ class Api {
         data class SearchBody(val key_word: String, val page_num: Int, val page_size: Int)
         SearchBody(keywords, page + 1, 9)
     }
-
 
     /**
      * 漫画排行
@@ -159,6 +159,20 @@ class Api {
         data class ComicDetailBody(val comic_id: String)
         ComicDetailBody(comicId)
     }
+
+    /**
+     * 获取漫画评论
+     * @param comicId - 漫画id
+     * @param page - 页数，从1开始
+     * @param sort - 排序，0表示按时间排序，2表示按热度排序
+     */
+    suspend fun getReply(comicId: String, page: Int, sort: Int) =
+        client.get("https://api.bilibili.com/x/v2/reply") {
+            parameter("oid", comicId)
+            parameter("pn", page)
+            parameter("sort", sort)
+            parameter("type", 22)
+        }
 
     /**
      * 获取章节图片token

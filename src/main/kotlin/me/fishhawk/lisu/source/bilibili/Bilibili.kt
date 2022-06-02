@@ -99,7 +99,7 @@ class Bilibili : LoginSource() {
                     )
                 }
             else -> throw Error("board not found")
-        }.also { println(it) }
+        }
 
     override suspend fun getMangaImpl(mangaId: String): MangaDetailDto =
         api.getComicDetail(mangaId)
@@ -128,6 +128,29 @@ class Bilibili : LoginSource() {
                     }.reversed()
                 )
             }
+
+    override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> =
+        api.getReply(mangaId, page = page + 1, sort = 2)
+            .body<JsonObject>()
+            .let { it["data"]!!.jsonObject }
+            .let { obj ->
+                fun parseComment(reply: JsonObject): CommentDto {
+                    return CommentDto(
+                        username = reply["member"]!!.jsonObject["uname"]!!.jsonPrimitive.content,
+                        content = reply["content"]!!.jsonObject["message"]!!.jsonPrimitive.content,
+                        createTime = reply["ctime"]!!.jsonPrimitive.long,
+                        vote = reply["like"]!!.jsonPrimitive.int,
+                        subComments = reply["replies"]!!.jsonArrayOrNull?.obj?.map { parseComment(it) },
+                    )
+                }
+
+                val upper = obj["upper"]!!.jsonObject["top"]!!.jsonObjectOrNull
+                    ?.let { listOf(parseComment(it)) } ?: emptyList()
+                val replies = obj["replies"]!!.jsonArrayOrNull?.obj
+                    ?.map { parseComment(it) } ?: emptyList()
+                upper + replies
+            }
+
 
     override suspend fun getContentImpl(mangaId: String, chapterId: String): List<String> =
         api.getImageIndex(chapterId)

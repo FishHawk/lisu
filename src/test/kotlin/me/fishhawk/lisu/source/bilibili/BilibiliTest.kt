@@ -46,6 +46,10 @@ class BilibiliTest : DescribeSpec({
                 .title.shouldBe("迷宫饭")
         }
 
+        it("#getComments") {
+            source.getComment(mangaId, 1).shouldBeSuccess().shouldNotBeEmpty()
+        }
+
         it("#getChapter") {
             source.getContent(mangaId, chapterId).shouldBeSuccess().shouldNotBeEmpty()
         }

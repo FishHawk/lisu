@@ -1,6 +1,7 @@
 package me.fishhawk.lisu.source
 
 import me.fishhawk.lisu.model.Image
+import me.fishhawk.lisu.model.CommentDto
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.util.runCatchingException
@@ -29,6 +30,10 @@ abstract class Source {
     protected abstract suspend fun getMangaImpl(mangaId: String): MangaDetailDto
     suspend fun getManga(mangaId: String) =
         runCatchingException { getMangaImpl(mangaId = mangaId) }
+
+    abstract suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto>
+    suspend fun getComment(mangaId: String, page: Int) =
+        runCatchingException { getCommentImpl(mangaId = mangaId, page = page) }
 
     protected abstract suspend fun getContentImpl(mangaId: String, chapterId: String): List<String>
     suspend fun getContent(mangaId: String, chapterId: String) =
