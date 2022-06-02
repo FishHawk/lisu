@@ -99,10 +99,6 @@ class Manhuaren : Source() {
             )
         }
 
-    // TODO("Not yet implemented")
-    override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> =
-        emptyList()
-
     override suspend fun getContentImpl(mangaId: String, chapterId: String): List<String> =
         api.getRead(chapterId).body<JsonObject>().let { data ->
             val obj = data["response"]!!.jsonObject

@@ -19,6 +19,9 @@ abstract class Source {
     abstract val lang: String
     abstract val boardModels: Map<String, BoardModel>
 
+    open val loginFeature: LoginFeature? = null
+    open val commentFeature: CommentFeature? = null
+
     protected abstract suspend fun searchImpl(page: Int, keywords: String): List<MangaDto>
     suspend fun search(page: Int, keywords: String) =
         runCatchingException { searchImpl(page = page, keywords = keywords) }
@@ -31,10 +34,6 @@ abstract class Source {
     suspend fun getManga(mangaId: String) =
         runCatchingException { getMangaImpl(mangaId = mangaId) }
 
-    abstract suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto>
-    suspend fun getComment(mangaId: String, page: Int) =
-        runCatchingException { getCommentImpl(mangaId = mangaId, page = page) }
-
     protected abstract suspend fun getContentImpl(mangaId: String, chapterId: String): List<String>
     suspend fun getContent(mangaId: String, chapterId: String) =
         runCatchingException { getContentImpl(mangaId = mangaId, chapterId = chapterId) }
@@ -42,11 +41,17 @@ abstract class Source {
     protected abstract suspend fun getImageImpl(url: String): Image
     suspend fun getImage(url: String) =
         runCatchingException { getImageImpl(url = url) }
-}
 
-abstract class LoginSource : Source() {
-    abstract val loginSite: String
-    abstract suspend fun isLogged(): Boolean
-    abstract suspend fun logout()
-    abstract suspend fun login(cookies: Map<String, String>): Boolean
+    interface LoginFeature {
+        val loginSite: String
+        suspend fun isLogged(): Boolean
+        suspend fun logout()
+        suspend fun login(cookies: Map<String, String>): Boolean
+    }
+
+    abstract class CommentFeature {
+        abstract suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto>
+        suspend fun getComment(mangaId: String, page: Int) =
+            runCatchingException { getCommentImpl(mangaId = mangaId, page = page) }
+    }
 }

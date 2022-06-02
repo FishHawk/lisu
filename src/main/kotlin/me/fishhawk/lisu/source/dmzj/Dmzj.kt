@@ -31,10 +31,6 @@ class Dmzj : Source() {
         TODO("Not yet implemented")
     }
 
-    override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> {
-        TODO("Not yet implemented")
-    }
-
     override suspend fun getContentImpl(mangaId: String, chapterId: String): List<String> {
         TODO("Not yet implemented")
     }

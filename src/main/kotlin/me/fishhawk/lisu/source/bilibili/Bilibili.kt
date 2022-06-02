@@ -12,7 +12,7 @@ import me.fishhawk.lisu.source.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class Bilibili : LoginSource() {
+class Bilibili : Source() {
     override val id: String = "哔哩哔哩漫画"
     override val lang: String = "zh"
 
@@ -28,13 +28,40 @@ class Bilibili : LoginSource() {
         )
     )
 
-    val api = Api()
+    private val api = Api()
 
-    override val loginSite = Api.baseUrl
-    override suspend fun isLogged() = api.isLogged()
-    override suspend fun logout() = api.logout()
-    override suspend fun login(cookies: Map<String, String>): Boolean {
-        return cookies[Api.SESSDATA]?.let { api.login(it) } ?: false
+    override val loginFeature = object : LoginFeature {
+        override val loginSite = Api.baseUrl
+        override suspend fun isLogged() = api.isLogged()
+        override suspend fun logout() = api.logout()
+        override suspend fun login(cookies: Map<String, String>): Boolean {
+            return cookies[Api.SESSDATA]?.let { api.login(it) } ?: false
+        }
+    }
+
+    override val commentFeature = object : CommentFeature() {
+        override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> =
+            api.getReply(mangaId, page = page + 1, sort = 2)
+                .body<JsonObject>()
+                .let { it["data"]!!.jsonObject }
+                .let { obj ->
+                    fun parseComment(reply: JsonObject): CommentDto {
+                        return CommentDto(
+                            username = reply["member"]!!.jsonObject["uname"]!!.jsonPrimitive.content,
+                            content = reply["content"]!!.jsonObject["message"]!!.jsonPrimitive.content,
+                            createTime = reply["ctime"]!!.jsonPrimitive.long,
+                            vote = reply["like"]!!.jsonPrimitive.int,
+                            subComments = reply["replies"]!!.jsonArrayOrNull?.obj?.map { parseComment(it) },
+                        )
+                    }
+
+                    val upper = obj["upper"]!!.jsonObject["top"]!!.jsonObjectOrNull
+                        ?.let { listOf(parseComment(it)) } ?: emptyList()
+                    val replies = obj["replies"]!!.jsonArrayOrNull?.obj
+                        ?.map { parseComment(it) } ?: emptyList()
+                    upper + replies
+                }
+
     }
 
     override suspend fun searchImpl(page: Int, keywords: String): List<MangaDto> =
@@ -128,29 +155,6 @@ class Bilibili : LoginSource() {
                     }.reversed()
                 )
             }
-
-    override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> =
-        api.getReply(mangaId, page = page + 1, sort = 2)
-            .body<JsonObject>()
-            .let { it["data"]!!.jsonObject }
-            .let { obj ->
-                fun parseComment(reply: JsonObject): CommentDto {
-                    return CommentDto(
-                        username = reply["member"]!!.jsonObject["uname"]!!.jsonPrimitive.content,
-                        content = reply["content"]!!.jsonObject["message"]!!.jsonPrimitive.content,
-                        createTime = reply["ctime"]!!.jsonPrimitive.long,
-                        vote = reply["like"]!!.jsonPrimitive.int,
-                        subComments = reply["replies"]!!.jsonArrayOrNull?.obj?.map { parseComment(it) },
-                    )
-                }
-
-                val upper = obj["upper"]!!.jsonObject["top"]!!.jsonObjectOrNull
-                    ?.let { listOf(parseComment(it)) } ?: emptyList()
-                val replies = obj["replies"]!!.jsonArrayOrNull?.obj
-                    ?.map { parseComment(it) } ?: emptyList()
-                upper + replies
-            }
-
 
     override suspend fun getContentImpl(mangaId: String, chapterId: String): List<String> =
         api.getImageIndex(chapterId)

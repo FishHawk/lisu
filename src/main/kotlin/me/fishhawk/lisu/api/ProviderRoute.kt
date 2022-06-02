@@ -13,7 +13,6 @@ import io.ktor.util.*
 import me.fishhawk.lisu.library.Library
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.model.*
-import me.fishhawk.lisu.source.LoginSource
 import me.fishhawk.lisu.source.Source
 import me.fishhawk.lisu.source.SourceManager
 
@@ -206,16 +205,16 @@ class RemoteProvider(
     }
 
     suspend fun login(cookies: Map<String, String>): Boolean {
-        return if (source is LoginSource) source.login(cookies)
-        else false
+        return source.loginFeature?.login(cookies) ?: false
     }
 
     suspend fun logout() {
-        if (source is LoginSource) source.logout()
+        source.loginFeature?.logout()
     }
 
-    suspend fun getComments(mangaId: String, page: Int) =
-        source.getComment(mangaId, page).getOrThrow()
+    suspend fun getComments(mangaId: String, page: Int): List<CommentDto> {
+        return source.commentFeature!!.getComment(mangaId, page).getOrThrow()
+    }
 
     override suspend fun search(page: Int, keywords: String): List<MangaDto> {
         return source.search(page, keywords).getOrThrow()
@@ -260,11 +259,13 @@ class ProviderManager(
         val libraries = libraryManager.listLibraries()
 
         val remoteProviders = sources.map {
-            if (it is LoginSource) {
-                ProviderDto(it.id, it.lang, it.boardModels, it.isLogged(), it.loginSite)
-            } else {
-                ProviderDto(it.id, it.lang, it.boardModels)
-            }
+            ProviderDto(
+                it.id,
+                it.lang,
+                it.boardModels,
+                it.loginFeature?.isLogged(),
+                it.loginFeature?.loginSite
+            )
         }
         val localProviders = libraries
             .filter { library -> sources.none { source -> source.id == library.id } }
