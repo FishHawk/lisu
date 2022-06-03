@@ -67,8 +67,10 @@ private object ProviderLocation {
 fun Route.providerRoutes(providerManger: ProviderManager) {
     install(CachingHeaders) {
         options { _, outgoingContent ->
-            when (outgoingContent.contentType?.withoutParameters()) {
-                ContentType.Image.Any -> CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600))
+            when (outgoingContent.contentType?.withoutParameters()?.contentType) {
+                ContentType.Image.Any.contentType -> {
+                    CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600))
+                }
                 else -> null
             }
         }
