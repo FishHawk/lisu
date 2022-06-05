@@ -16,7 +16,7 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.4")
 
-    val ktorVersion = "2.0.1"
+    val ktorVersion = "2.0.2"
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -37,8 +37,7 @@ dependencies {
 
     implementation("se.sawano.java:alphanumeric-comparator:1.4.1")
 
-    implementation("com.moandjiezana.toml:toml4j:0.7.2")
-    implementation("cc.ekblad:4koma:1.0.1")
+    implementation("com.tfowl.ktor:ktor-jsoup:2.0.0")
 
     val krontabVersion = "0.7.2"
     implementation("dev.inmo:krontab:$krontabVersion")

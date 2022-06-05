@@ -51,7 +51,7 @@ class Manhuaren : Source() {
             providerId = id,
             id = obj["mangaId"]!!.jsonPrimitive.content,
             cover = obj["mangaCoverimageUrl"]?.jsonPrimitive?.content,
-            updateTime = obj["mangaNewestTime"]?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
+            updateTime = obj["mangaNewestTime"]?.jsonPrimitive?.content?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
             title = obj["mangaName"]?.jsonPrimitive?.content,
             authors = obj["mangaAuthor"]?.jsonPrimitive?.content?.split(","),
             isFinished = obj["mangaIsOver"]!!.jsonPrimitive.int == 1
@@ -70,7 +70,7 @@ class Manhuaren : Source() {
                         (obj["mangaPicimageUrl"] ?: obj["shareIcon"])?.jsonPrimitive?.content ?: ""
                     } else it
                 },
-                updateTime = obj["mangaNewestTime"]?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
+                updateTime = obj["mangaNewestTime"]?.jsonPrimitive?.content?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
 
                 title = obj["mangaName"]!!.jsonPrimitive.content,
                 authors = obj["mangaAuthors"]!!.jsonArray.map { it.jsonPrimitive.content },
@@ -92,7 +92,7 @@ class Manhuaren : Source() {
                             name = it.jsonObject["sectionName"]!!.jsonPrimitive.content,
                             title = it.jsonObject["sectionTitle"]!!.jsonPrimitive.content,
                             isLocked = it.jsonObject["isMustPay"]?.jsonPrimitive?.int == 1,
-                            updateTime = it.jsonObject["releaseTime"]?.asDateToEpochSecond("yyyy-MM-dd")
+                            updateTime = it.jsonObject["releaseTime"]?.jsonPrimitive?.content?.asDateToEpochSecond("yyyy-MM-dd")
                         )
                     }.reversed()
                 }.filterValues { it.isNotEmpty() }

@@ -11,15 +11,15 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.io.path.Path
 
-internal fun JsonElement.asDateTimeToEpochSecond(pattern: String) =
+internal fun String.asDateTimeToEpochSecond(pattern: String) =
     LocalDateTime
-        .parse(jsonPrimitive.content, DateTimeFormatter.ofPattern(pattern))
+        .parse(this, DateTimeFormatter.ofPattern(pattern))
         .atZone(ZoneId.systemDefault())
         .toEpochSecond()
 
-internal fun JsonElement.asDateToEpochSecond(pattern: String) =
+internal fun String.asDateToEpochSecond(pattern: String) =
     LocalDate
-        .parse(jsonPrimitive.content, DateTimeFormatter.ofPattern(pattern))
+        .parse(this, DateTimeFormatter.ofPattern(pattern))
         .atStartOfDay()
         .atZone(ZoneId.systemDefault())
         .toEpochSecond()

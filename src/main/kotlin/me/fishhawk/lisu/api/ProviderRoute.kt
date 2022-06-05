@@ -247,8 +247,11 @@ class RemoteProvider(
 
     override suspend fun getImage(mangaId: String, collectionId: String, chapterId: String, imageId: String): Image? {
         // Using Cache
+        val a = source.getImage(imageId)
+        println(a)
         return library?.getManga(mangaId)?.getChapter(collectionId, chapterId)?.getImage(imageId)
-            ?: source.getImage(imageId).getOrNull()
+            ?: a.getOrNull()
+
     }
 }
 

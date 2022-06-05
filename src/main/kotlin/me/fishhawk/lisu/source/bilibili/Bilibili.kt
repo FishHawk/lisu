@@ -150,7 +150,7 @@ class Bilibili : Source() {
                             name = it["short_title"]!!.jsonPrimitive.content,
                             title = it["title"]!!.jsonPrimitive.content,
                             isLocked = it["is_locked"]?.jsonPrimitive?.boolean,
-                            updateTime = it["pub_time"]?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss")
+                            updateTime = it["pub_time"]?.jsonPrimitive?.content?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss")
                         )
                     }.reversed()
                 )

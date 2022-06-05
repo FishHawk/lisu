@@ -13,13 +13,6 @@ class BilibiliTest : DescribeSpec({
     describe("Source test: bilibili") {
         val source = Bilibili()
 
-        xit("#login") {
-            val secret = ""
-            source.isLogged().shouldBeFalse()
-            source.login(mapOf("SESSDATA" to secret)).shouldBeTrue()
-            source.isLogged().shouldBeTrue()
-        }
-
         it("#search") {
             source.search(0, "迷宫饭").shouldBeSuccess()
                 .first().title.shouldBe("迷宫饭")
@@ -46,10 +39,6 @@ class BilibiliTest : DescribeSpec({
                 .title.shouldBe("迷宫饭")
         }
 
-        it("#getComments") {
-            source.getComment(mangaId, 1).shouldBeSuccess().shouldNotBeEmpty()
-        }
-
         it("#getChapter") {
             source.getContent(mangaId, chapterId).shouldBeSuccess().shouldNotBeEmpty()
         }
@@ -58,6 +47,19 @@ class BilibiliTest : DescribeSpec({
             val url = source.getContent(mangaId, chapterId).shouldBeSuccess().first()
             val image = source.getImage(url).shouldBeSuccess()
             source.saveTestImage(image)
+        }
+
+        xit("#login feature") {
+            val secret = ""
+            source.loginFeature.isLogged().shouldBeFalse()
+            source.loginFeature.login(mapOf("SESSDATA" to secret)).shouldBeTrue()
+            source.loginFeature.isLogged().shouldBeTrue()
+            source.loginFeature.logout()
+            source.loginFeature.isLogged().shouldBeFalse()
+        }
+
+        it("#comment feature") {
+            source.commentFeature.getComment(mangaId, 1).shouldBeSuccess().shouldNotBeEmpty()
         }
     }
 })

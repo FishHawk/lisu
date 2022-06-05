@@ -11,7 +11,8 @@ typealias BoardModel = Map<String, List<String>>
 enum class Board(val id: String) {
     Popular("popular"),
     Latest("latest"),
-    Category("category")
+    Category("category"),
+    Ranking("ranking"),
 }
 
 abstract class Source {
