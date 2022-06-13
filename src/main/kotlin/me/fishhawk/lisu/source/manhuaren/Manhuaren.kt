@@ -53,7 +53,7 @@ class Manhuaren : Source() {
             cover = obj["mangaCoverimageUrl"]?.jsonPrimitive?.content,
             updateTime = obj["mangaNewestTime"]?.jsonPrimitive?.content?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
             title = obj["mangaName"]?.jsonPrimitive?.content,
-            authors = obj["mangaAuthor"]?.jsonPrimitive?.content?.split(","),
+            authors = obj["mangaAuthor"]?.jsonPrimitive?.content?.split(",") ?: emptyList(),
             isFinished = obj["mangaIsOver"]!!.jsonPrimitive.int == 1
         )
     }

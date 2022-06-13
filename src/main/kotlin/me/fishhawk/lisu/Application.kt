@@ -61,9 +61,7 @@ private fun Application.lisuModule(
 
     install(ContentNegotiation) {
         json(Json {
-            prettyPrint = true
             isLenient = true
-            encodeDefaults = true
         })
     }
 

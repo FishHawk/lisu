@@ -8,7 +8,7 @@ data class MangaMetadataDto(
     val authors: List<String>? = null,
     val isFinished: Boolean? = null,
     val description: String? = null,
-    val tags: Map<String, List<String>>? = null,
+    val tags: Map<String, List<String>> = emptyMap(),
 
     val collections: Map<String, Map<String, ChapterMetadataDto>>? = null,
     val chapters: Map<String, ChapterMetadataDto>? = null,
@@ -32,7 +32,7 @@ fun MangaDetailDto.toMetadataDetail(): MangaMetadataDto {
         isFinished = isFinished,
         description = description,
         tags = tags,
-        collections = collections?.mapValues { mapChapters(it.value) },
-        chapters = chapters?.let { mapChapters(it) }
+        collections = collections.mapValues { mapChapters(it.value) },
+        chapters = mapChapters(chapters)
     )
 }

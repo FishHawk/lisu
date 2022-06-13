@@ -88,7 +88,7 @@ class EHentai : Source() {
                     cover = metadata.cover,
                     updateTime = metadata.posted,
                     title = metadata.title ?: metadata.altTitle,
-                    authors = metadata.tags[TagKeyArtist]?.ifEmpty { null },
+                    authors = metadata.tags[TagKeyArtist] ?: emptyList(),
                     isFinished = true,
                     description = StringBuilder().apply {
                         metadata.altTitle?.let { append("Alternate Title: $it\n") }
@@ -101,7 +101,7 @@ class EHentai : Source() {
                         }
                     }.toString().removeSuffix("\n").ifBlank { null },
                     tags = metadata.tags.filterKeys { it != TagKeyArtist },
-                    preview = doc.parseImageUrls().ifEmpty { null },
+                    preview = doc.parseImageUrls(),
                 )
             }
     }
@@ -157,8 +157,7 @@ class EHentai : Source() {
                     authors = a.select(".gt")
                         .map { it.attr("title") }
                         .filter { it.startsWith("$TagKeyArtist:") }
-                        .map { it.substringAfter("$TagKeyArtist:") }
-                        .ifEmpty { null },
+                        .map { it.substringAfter("$TagKeyArtist:") },
                     isFinished = true,
                 )
             }

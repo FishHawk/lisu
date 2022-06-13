@@ -73,7 +73,7 @@ class Bilibili : Source() {
                     cover = obj["vertical_cover"]?.jsonPrimitive?.content,
                     updateTime = null,
                     title = obj["org_title"]?.jsonPrimitive?.content,
-                    authors = obj["author_name"]?.jsonArray?.map { it.jsonPrimitive.content },
+                    authors = obj["author_name"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList(),
                     isFinished = obj["is_finish"]?.asMangaIsFinish()
                 )
             }
@@ -90,7 +90,7 @@ class Bilibili : Source() {
                         id = obj["comic_id"]!!.jsonPrimitive.content,
                         cover = obj["vertical_cover"]?.jsonPrimitive?.content,
                         title = obj["title"]?.jsonPrimitive?.content,
-                        authors = obj["author"]?.jsonArray?.string,
+                        authors = obj["author"]?.jsonArray?.string ?: emptyList(),
                         isFinished = obj["is_finish"]?.asMangaIsFinish()
                     )
                 }

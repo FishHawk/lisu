@@ -30,7 +30,7 @@ class Manga(val path: Path) {
                     cover = null,
                     updateTime = path.getLastModifiedTime().toInstant().epochSecond,
                     title = it?.title,
-                    authors = it?.authors,
+                    authors = it?.authors ?: emptyList(),
                     isFinished = it?.isFinished
                 )
             }
@@ -58,13 +58,13 @@ class Manga(val path: Path) {
                     updateTime = path.getLastModifiedTime().toInstant().epochSecond,
 
                     title = it?.title,
-                    authors = it?.authors,
+                    authors = it?.authors ?: emptyList(),
                     isFinished = it?.isFinished,
                     description = it?.description,
-                    tags = it?.tags,
-                    collections = collections,
-                    chapters = chapters,
-                    preview = previews
+                    tags = it?.tags ?: emptyMap(),
+                    collections = collections ?: emptyMap(),
+                    chapters = chapters ?: emptyList(),
+                    preview = previews ?: emptyList()
                 )
             }
     }

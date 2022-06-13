@@ -1,7 +1,6 @@
 package me.fishhawk.lisu.source.ehentai
 
 import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.collections.shouldBeIn
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
@@ -30,7 +29,7 @@ class EHentaiTest : DescribeSpec({
                 .title.shouldBe("[PIXIV] 笠木梨Ceey (27024181)")
         }
 
-        it("#getChapter") {
+        it("#getContent") {
             source.getContent(mangaId, chapterId).shouldBeSuccess().shouldNotBeEmpty()
         }
 
