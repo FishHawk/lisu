@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
-import me.fishhawk.lisu.source.Board
+import me.fishhawk.lisu.source.BoardId
 import me.fishhawk.lisu.source.saveTestImage
 
 class EHentaiTest : DescribeSpec({
@@ -13,9 +13,9 @@ class EHentaiTest : DescribeSpec({
 
         it("#getBoard") {
             listOf(
-                source.getBoard(Board.Popular.id, 0, emptyMap()),
-                source.getBoard(Board.Latest.id, 0, emptyMap()),
-                source.getBoard(Board.Ranking.id, 0, mapOf("type" to 0)),
+                source.getBoard(BoardId.Popular.id, 0, emptyMap()),
+                source.getBoard(BoardId.Latest.id, 0, emptyMap()),
+                source.getBoard(BoardId.Ranking.id, 0, mapOf("type" to 0)),
             ).forEach {
                 it.shouldBeSuccess().shouldNotBeEmpty()
             }

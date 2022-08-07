@@ -14,10 +14,10 @@ class Manhuaren : Source() {
     override val id: String = "漫画人"
     override val lang: String = "zh"
 
-    override val boardModels: Map<String, BoardModel> = mapOf(
-        Board.Popular.id to mapOf("type" to Api.rankTypes.map { it.name }),
-        Board.Latest.id to mapOf("type" to listOf("最新更新", "最新上架")),
-        Board.Category.id to mapOf(
+    override val boardModels: Map<BoardId, BoardModel> = mapOf(
+        BoardId.Ranking to mapOf("type" to Api.rankTypes.map { it.name }),
+        BoardId.Latest to mapOf("type" to listOf("最新更新", "最新上架")),
+        BoardId.Category to mapOf(
             "type" to Api.categoryTypes.map { it.name },
             "status" to Api.categoryStatuses.map { it.name }
         )
@@ -31,16 +31,15 @@ class Manhuaren : Source() {
             parseJsonArrayToMangas((obj["result"] ?: obj["mangas"]!!).jsonArray)
         }
 
-    override suspend fun getBoardImpl(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> =
+    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto> =
         when (boardId) {
-            Board.Popular.id -> api.getRank(page, filters["type"]!!)
-            Board.Latest.id -> when (filters["type"]!!) {
+            BoardId.Ranking -> api.getRank(page, filters["type"]!!)
+            BoardId.Latest -> when (filters["type"]!!) {
                 0 -> api.getUpdate(page)
                 1 -> api.getRelease(page)
                 else -> throw Error("board not found")
             }
-            Board.Category.id -> api.getCategoryMangas(page, filters["type"]!!, filters["status"]!!)
-            else -> throw Error("board not found")
+            BoardId.Category -> api.getCategoryMangas(page, filters["type"]!!, filters["status"]!!)
         }.body<JsonObject>().let {
             parseJsonArrayToMangas(it["response"]!!.jsonObject["mangas"]!!.jsonArray)
         }

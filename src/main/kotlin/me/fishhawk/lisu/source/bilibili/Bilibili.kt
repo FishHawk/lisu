@@ -16,10 +16,10 @@ class Bilibili : Source() {
     override val id: String = "哔哩哔哩漫画"
     override val lang: String = "zh"
 
-    override val boardModels: Map<String, BoardModel> = mapOf(
-        Board.Popular.id to mapOf("type" to Api.homeHotType.map { it.first }),
-        Board.Latest.id to emptyMap(),
-        Board.Category.id to mapOf(
+    override val boardModels: Map<BoardId, BoardModel> = mapOf(
+        BoardId.Ranking to mapOf("type" to Api.homeHotType.map { it.first }),
+        BoardId.Latest to emptyMap(),
+        BoardId.Category to mapOf(
             "style" to Api.classStyle.map { it.first },
             "area" to Api.classArea.map { it.first },
             "isFinish" to Api.classIsFinish.map { it.first },
@@ -79,9 +79,9 @@ class Bilibili : Source() {
             }
         }
 
-    override suspend fun getBoardImpl(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> =
+    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto> =
         when (boardId) {
-            Board.Popular.id -> if (page > 0) emptyList() else api.getHomeHot(filters["type"]!!)
+            BoardId.Ranking -> if (page > 0) emptyList() else api.getHomeHot(filters["type"]!!)
                 .body<JsonObject>()
                 .let { it["data"]!!.jsonArray.obj }
                 .map { obj ->
@@ -94,7 +94,7 @@ class Bilibili : Source() {
                         isFinished = obj["is_finish"]?.asMangaIsFinish()
                     )
                 }
-            Board.Latest.id -> api.getDailyPush(
+            BoardId.Latest -> api.getDailyPush(
                 page,
                 LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
             ).body<JsonObject>()
@@ -107,7 +107,7 @@ class Bilibili : Source() {
                         title = obj["title"]?.jsonPrimitive?.content,
                     )
                 }
-            Board.Category.id -> api.getClassPage(
+            BoardId.Category -> api.getClassPage(
                 page,
                 filters["style"]!!,
                 filters["area"]!!,

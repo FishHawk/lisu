@@ -1,7 +1,7 @@
 package me.fishhawk.lisu.library
 
 import me.fishhawk.lisu.model.MangaDto
-import me.fishhawk.lisu.source.Board
+import me.fishhawk.lisu.source.BoardId
 import me.fishhawk.lisu.source.BoardModel
 import me.fishhawk.lisu.util.*
 import java.nio.file.Path
@@ -29,9 +29,9 @@ class Library(private val path: Path) {
             .toList()
     }
 
-    fun getBoard(boardId: String, page: Int): List<MangaDto>? {
+    fun getBoard(boardId: BoardId, page: Int): List<MangaDto>? {
         return when (boardId) {
-            Board.Latest.id -> search(page, "")
+            BoardId.Latest -> search(page, "")
             else -> null
         }
     }
@@ -60,7 +60,7 @@ class Library(private val path: Path) {
 
     companion object {
         const val lang = "local"
-        val boardModels: Map<String, BoardModel> =
-            mapOf(Board.Latest.id to emptyMap())
+        val boardModels: Map<BoardId, BoardModel> =
+            mapOf(BoardId.Latest to emptyMap())
     }
 }

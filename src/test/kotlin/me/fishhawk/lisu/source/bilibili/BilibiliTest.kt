@@ -6,7 +6,7 @@ import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
-import me.fishhawk.lisu.source.Board
+import me.fishhawk.lisu.source.BoardId
 import me.fishhawk.lisu.source.saveTestImage
 
 class BilibiliTest : DescribeSpec({
@@ -20,10 +20,10 @@ class BilibiliTest : DescribeSpec({
 
         it("#getBoard") {
             listOf(
-                source.getBoard(Board.Popular.id, 0, mapOf("type" to 0)),
-                source.getBoard(Board.Latest.id, 0, emptyMap()),
+                source.getBoard(BoardId.Popular.id, 0, mapOf("type" to 0)),
+                source.getBoard(BoardId.Latest.id, 0, emptyMap()),
                 source.getBoard(
-                    Board.Category.id, 0,
+                    BoardId.Category.id, 0,
                     mapOf("style" to 0, "area" to 0, "isFinish" to 0, "isFree" to 0, "order" to 0)
                 ),
             ).forEach {

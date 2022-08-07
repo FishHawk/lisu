@@ -28,10 +28,10 @@ class EHentai : Source() {
     override val id: String = "E-Hentai"
     override val lang: String = "en"
 
-    override val boardModels: Map<String, BoardModel> = mapOf(
-        Board.Popular.id to emptyMap(),
-        Board.Latest.id to mapOf(),
-        Board.Ranking.id to mapOf("type" to Api.toplistTypes.map { it.name }),
+    override val boardModels: Map<BoardId, BoardModel> = mapOf(
+        BoardId.Ranking to emptyMap(),
+        BoardId.Latest to mapOf(),
+        BoardId.Ranking to mapOf("type" to Api.toplistTypes.map { it.name }),
     )
 
     private val api = Api()
@@ -40,11 +40,11 @@ class EHentai : Source() {
         TODO("Not yet implemented")
     }
 
-    override suspend fun getBoardImpl(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> =
+    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto> =
         when (boardId) {
-            Board.Popular.id -> if (page > 0) emptyList() else api.popular().parseMangaList()
-            Board.Latest.id -> api.latest(page).parseMangaList()
-            Board.Ranking.id -> api.toplist(page, filters["type"]!!).parseMangaList()
+//            BoardId.Ranking -> if (page > 0) emptyList() else api.popular().parseMangaList()
+            BoardId.Ranking -> api.toplist(page, filters["type"]!!).parseMangaList()
+            BoardId.Latest -> api.latest(page).parseMangaList()
             else -> throw Error("board not found")
         }
 

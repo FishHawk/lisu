@@ -13,6 +13,7 @@ import io.ktor.util.*
 import me.fishhawk.lisu.library.Library
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.model.*
+import me.fishhawk.lisu.source.BoardId
 import me.fishhawk.lisu.source.Source
 import me.fishhawk.lisu.source.SourceManager
 
@@ -34,7 +35,7 @@ private object ProviderLocation {
     data class Search(val providerId: String, val page: Int, val keywords: String)
 
     @Location("/provider/{providerId}/board/{boardId}")
-    data class Board(val providerId: String, val boardId: String, val page: Int)
+    data class Board(val providerId: String, val boardId: BoardId, val page: Int)
 
     @Location("/provider/{providerId}/manga/{mangaId}")
     data class Manga(val providerId: String, val mangaId: String)
@@ -147,7 +148,7 @@ fun Route.providerRoutes(providerManger: ProviderManager) {
 
 interface Provider {
     suspend fun search(page: Int, keywords: String): List<MangaDto>
-    suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto>?
+    suspend fun getBoard(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto>?
     suspend fun getManga(mangaId: String): MangaDetailDto?
     suspend fun getCover(mangaId: String, imageId: String): Image?
     suspend fun getContent(mangaId: String, collectionId: String, chapterId: String): List<String>?
@@ -168,7 +169,7 @@ class LocalProvider(
             .map { it.updateMangaState() }
     }
 
-    override suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto>? {
+    override suspend fun getBoard(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto>? {
         return library.getBoard(boardId, page)
             ?.map { it.updateMangaState() }
     }
@@ -223,7 +224,7 @@ class RemoteProvider(
             .map { it.updateMangaState() }
     }
 
-    override suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto> {
+    override suspend fun getBoard(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto> {
         return source.getBoard(boardId, page, filters).getOrThrow()
             .map { it.updateMangaState() }
     }

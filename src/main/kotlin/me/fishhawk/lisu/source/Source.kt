@@ -6,19 +6,13 @@ import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.util.runCatchingException
 
+enum class BoardId { Ranking, Latest, Category }
 typealias BoardModel = Map<String, List<String>>
-
-enum class Board(val id: String) {
-    Popular("popular"),
-    Latest("latest"),
-    Category("category"),
-    Ranking("ranking"),
-}
 
 abstract class Source {
     abstract val id: String
     abstract val lang: String
-    abstract val boardModels: Map<String, BoardModel>
+    abstract val boardModels: Map<BoardId, BoardModel>
 
     open val loginFeature: LoginFeature? = null
     open val commentFeature: CommentFeature? = null
@@ -27,8 +21,8 @@ abstract class Source {
     suspend fun search(page: Int, keywords: String) =
         runCatchingException { searchImpl(page = page, keywords = keywords) }
 
-    protected abstract suspend fun getBoardImpl(boardId: String, page: Int, filters: Map<String, Int>): List<MangaDto>
-    suspend fun getBoard(boardId: String, page: Int, filters: Map<String, Int>) =
+    protected abstract suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto>
+    suspend fun getBoard(boardId: BoardId, page: Int, filters: Map<String, Int>) =
         runCatchingException { getBoardImpl(boardId = boardId, page = page, filters = filters) }
 
     protected abstract suspend fun getMangaImpl(mangaId: String): MangaDetailDto
