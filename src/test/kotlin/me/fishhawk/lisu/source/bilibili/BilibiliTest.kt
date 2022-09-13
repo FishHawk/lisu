@@ -65,7 +65,7 @@ class BilibiliTest : DescribeSpec({
         }
 
         it("#comment feature") {
-            source.commentFeature.getComment(mangaId, 1).shouldBeSuccess().shouldNotBeEmpty()
+            source.commentFeature.getComment(mangaId, 0).shouldBeSuccess().shouldNotBeEmpty()
         }
     }
 })

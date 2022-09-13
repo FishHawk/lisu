@@ -45,5 +45,9 @@ class EHentaiTest : DescribeSpec({
             val image = source.getImage(url).shouldBeSuccess()
             source.saveTestImage(image)
         }
+
+        it("#comment feature") {
+            source.commentFeature.getComment(mangaId, 0).shouldBeSuccess().shouldNotBeEmpty()
+        }
     }
 })

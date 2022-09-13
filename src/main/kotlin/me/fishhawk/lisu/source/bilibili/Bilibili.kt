@@ -66,7 +66,6 @@ class Bilibili : Source() {
                     upper + replies
                 }
         }
-
     }
 
     override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {

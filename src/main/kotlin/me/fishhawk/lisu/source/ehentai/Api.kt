@@ -59,6 +59,9 @@ class Api {
     suspend fun getGallery(id: String, token: String, page: Int = 0) =
         client.get("https://e-hentai.org/g/$id/$token/") { parameter("p", page) }.body<Document>()
 
+    suspend fun getGalleryWithComments(id: String, token: String) =
+        client.get("https://e-hentai.org/g/$id/$token/?hc=1#comments").body<Document>()
+
     suspend fun getPage(url: String) =
         client.get(url).body<Document>()
 

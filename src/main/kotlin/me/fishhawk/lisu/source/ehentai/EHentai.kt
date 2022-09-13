@@ -8,6 +8,8 @@ import io.ktor.utils.io.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.*
+import me.fishhawk.lisu.model.CommentDto
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
@@ -68,6 +70,26 @@ class EHentai : Source() {
     )
 
     private val api = Api()
+
+    override val commentFeature = object : CommentFeature() {
+        override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> {
+            if (page > 0) return emptyList()
+            val (galleryId, galleryToken) = mangaId.split(".", limit = 2)
+            return api.getGalleryWithComments(galleryId, galleryToken)
+                .select("div.gm div.c1")
+                .map { c1 ->
+                    CommentDto(
+                        username = c1.select("div.c3 a").text(),
+                        content = c1.select("div.c6").text(),
+                        createTime = c1.select("div.c3").text()
+                            .removePrefix("Posted on ")
+                            .substringBefore(" by:")
+                            .asDateTimeToEpochSecond("dd MMMM yyyy, HH:mm"),
+                        vote = c1.select("div.c5 span").first()?.text()?.toInt(),
+                    )
+                }
+        }
+    }
 
     override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
         return when (boardId) {
