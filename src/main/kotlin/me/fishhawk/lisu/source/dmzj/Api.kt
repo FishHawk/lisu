@@ -2,7 +2,7 @@ package me.fishhawk.lisu.source.dmzj
 
 import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.engine.cio.*
+import io.ktor.client.engine.java.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
 class Api {
-    private val client = HttpClient(CIO) {
+    private val client = HttpClient(Java) {
         install(ContentNegotiation) {
             json(Json {
                 prettyPrint = true

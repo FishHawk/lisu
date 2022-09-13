@@ -4,26 +4,40 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
+import io.ktor.http.*
+import me.fishhawk.lisu.source.BoardId
 import me.fishhawk.lisu.source.saveTestImage
 
 class ManhuarenTest : DescribeSpec({
     describe("Source test: manhuaren") {
         val source = Manhuaren()
 
-        it("#search") {
-            source.search(0, "龙珠超").shouldBeSuccess()
-                .first().title.shouldBe("龙珠超")
+        it("#getBoard Main") {
+            source.getBoard(BoardId.Main, 0, Parameters.build {
+                append("类型", "0")
+                append("状态", "0")
+            }).shouldBeSuccess().shouldNotBeEmpty()
         }
 
-        it("#getBoard") {
-            listOf(
-                source.getBoard("popular", 0, mapOf("type" to 0)),
-                source.getBoard("latest", 0, mapOf("type" to 0)),
-                source.getBoard("latest", 0, mapOf("type" to 1)),
-                source.getBoard("category", 0, mapOf("type" to 0, "status" to 0)),
-            ).forEach {
-                it.shouldBeSuccess().shouldNotBeEmpty()
-            }
+        it("#getBoard Rank") {
+            source.getBoard(BoardId.Rank, 0, Parameters.build {
+                append("榜单", "2")
+            }).shouldBeSuccess().shouldNotBeEmpty()
+
+            source.getBoard(BoardId.Rank, 0, Parameters.build {
+                append("榜单", "0")
+            }).shouldBeSuccess().shouldNotBeEmpty()
+
+            source.getBoard(BoardId.Rank, 0, Parameters.build {
+                append("榜单", "1")
+            }).shouldBeSuccess().shouldNotBeEmpty()
+        }
+
+        it("#getBoard Search") {
+            source.getBoard(BoardId.Search, 0, Parameters.build {
+                append("keywords", "龙珠超")
+            }).shouldBeSuccess().shouldNotBeEmpty()
+                .first().title.shouldBe("龙珠超")
         }
 
         val mangaId = "18657"

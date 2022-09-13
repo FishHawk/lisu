@@ -9,23 +9,27 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import me.fishhawk.lisu.model.*
 import me.fishhawk.lisu.source.*
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 class Bilibili : Source() {
     override val id: String = "哔哩哔哩漫画"
     override val lang: String = "zh"
 
-    override val boardModels: Map<BoardId, BoardModel> = mapOf(
-        BoardId.Ranking to mapOf("type" to Api.homeHotType.map { it.first }),
-        BoardId.Latest to emptyMap(),
-        BoardId.Category to mapOf(
-            "style" to Api.classStyle.map { it.first },
-            "area" to Api.classArea.map { it.first },
-            "isFinish" to Api.classIsFinish.map { it.first },
-            "isFree" to Api.classIsFree.map { it.first },
-            "order" to Api.classOrder.map { it.first }
-        )
+    override val boardModel: Map<BoardId, BoardModel> = mapOf(
+        BoardId.Main to BoardModel(
+            base = mapOf(
+                "题材" to FilterModel.Select(Api.classStyle.map { it.first }),
+                "地区" to FilterModel.Select(Api.classArea.map { it.first }),
+                "进度" to FilterModel.Select(Api.classIsFinish.map { it.first }),
+                "收费" to FilterModel.Select(Api.classIsFree.map { it.first }),
+                "排序" to FilterModel.Select(Api.classOrder.map { it.first }),
+            )
+        ),
+        BoardId.Rank to BoardModel(
+            base = mapOf(
+                "榜单" to FilterModel.Select(Api.homeHotType.map { it.first })
+            )
+        ),
+        BoardId.Search to BoardModel(),
     )
 
     private val api = Api()
@@ -40,8 +44,8 @@ class Bilibili : Source() {
     }
 
     override val commentFeature = object : CommentFeature() {
-        override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> =
-            api.getReply(mangaId, page = page + 1, sort = 2)
+        override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> {
+            return api.getReply(mangaId, page = page + 1, sort = 2)
                 .body<JsonObject>()
                 .let { it["data"]!!.jsonObject }
                 .let { obj ->
@@ -61,75 +65,79 @@ class Bilibili : Source() {
                         ?.map { parseComment(it) } ?: emptyList()
                     upper + replies
                 }
+        }
 
     }
 
-    override suspend fun searchImpl(page: Int, keywords: String): List<MangaDto> =
-        api.search(page, keywords).body<JsonObject>().let { json ->
-            json["data"]!!.jsonObject["list"]!!.jsonArray.map { it.jsonObject }.map { obj ->
-                MangaDto(
-                    providerId = id,
-                    id = obj["id"]!!.jsonPrimitive.content,
-                    cover = obj["vertical_cover"]?.jsonPrimitive?.content,
-                    updateTime = null,
-                    title = obj["org_title"]?.jsonPrimitive?.content,
-                    authors = obj["author_name"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList(),
-                    isFinished = obj["is_finish"]?.asMangaIsFinish()
-                )
+    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
+        return when (boardId) {
+            BoardId.Main ->
+                api.getClassPage(
+                    page,
+                    filters.int("题材"),
+                    filters.int("地区"),
+                    filters.int("进度"),
+                    filters.int("收费"),
+                    filters.int("排序"),
+                ).body<JsonObject>()
+                    .let { it["data"]!!.jsonArray.obj }
+                    .map { obj ->
+                        MangaDto(
+                            providerId = id,
+                            id = obj["season_id"]!!.jsonPrimitive.content,
+                            cover = obj["vertical_cover"]?.jsonPrimitive?.content,
+                            title = obj["title"]?.jsonPrimitive?.content,
+                            isFinished = obj["is_finish"]?.asMangaIsFinish()
+                        )
+                    }
+            BoardId.Rank ->
+                if (page > 0) emptyList()
+                else api.getHomeHot(filters.int("榜单"))
+                    .body<JsonObject>()
+                    .let { it["data"]!!.jsonArray.obj }
+                    .map { obj ->
+                        MangaDto(
+                            providerId = id,
+                            id = obj["comic_id"]!!.jsonPrimitive.content,
+                            cover = obj["vertical_cover"]?.jsonPrimitive?.content,
+                            title = obj["title"]?.jsonPrimitive?.content,
+                            authors = obj["author"]?.jsonArray?.string ?: emptyList(),
+                            isFinished = obj["is_finish"]?.asMangaIsFinish()
+                        )
+                    }
+            BoardId.Search -> {
+                api.search(page, filters.keywords()).body<JsonObject>().let { json ->
+                    json["data"]!!.jsonObject["list"]!!.jsonArray.map { it.jsonObject }.map { obj ->
+                        MangaDto(
+                            providerId = id,
+                            id = obj["id"]!!.jsonPrimitive.content,
+                            cover = obj["vertical_cover"]?.jsonPrimitive?.content,
+                            updateTime = null,
+                            title = obj["org_title"]?.jsonPrimitive?.content,
+                            authors = obj["author_name"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList(),
+                            isFinished = obj["is_finish"]?.asMangaIsFinish()
+                        )
+                    }
+                }
             }
+//            api.getDailyPush(
+//                page,
+//                LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+//            ).body<JsonObject>()
+//                .let { it["data"]!!.jsonObject["list"]!!.jsonArray.obj }
+//                .map { obj ->
+//                    MangaDto(
+//                        providerId = id,
+//                        id = obj["comic_id"]!!.jsonPrimitive.content,
+//                        cover = obj["vertical_cover"]?.jsonPrimitive?.content,
+//                        title = obj["title"]?.jsonPrimitive?.content,
+//                    )
+//                }
         }
+    }
 
-    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto> =
-        when (boardId) {
-            BoardId.Ranking -> if (page > 0) emptyList() else api.getHomeHot(filters["type"]!!)
-                .body<JsonObject>()
-                .let { it["data"]!!.jsonArray.obj }
-                .map { obj ->
-                    MangaDto(
-                        providerId = id,
-                        id = obj["comic_id"]!!.jsonPrimitive.content,
-                        cover = obj["vertical_cover"]?.jsonPrimitive?.content,
-                        title = obj["title"]?.jsonPrimitive?.content,
-                        authors = obj["author"]?.jsonArray?.string ?: emptyList(),
-                        isFinished = obj["is_finish"]?.asMangaIsFinish()
-                    )
-                }
-            BoardId.Latest -> api.getDailyPush(
-                page,
-                LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-            ).body<JsonObject>()
-                .let { it["data"]!!.jsonObject["list"]!!.jsonArray.obj }
-                .map { obj ->
-                    MangaDto(
-                        providerId = id,
-                        id = obj["comic_id"]!!.jsonPrimitive.content,
-                        cover = obj["vertical_cover"]?.jsonPrimitive?.content,
-                        title = obj["title"]?.jsonPrimitive?.content,
-                    )
-                }
-            BoardId.Category -> api.getClassPage(
-                page,
-                filters["style"]!!,
-                filters["area"]!!,
-                filters["isFinish"]!!,
-                filters["isFree"]!!,
-                filters["order"]!!,
-            ).body<JsonObject>()
-                .let { it["data"]!!.jsonArray.obj }
-                .map { obj ->
-                    MangaDto(
-                        providerId = id,
-                        id = obj["season_id"]!!.jsonPrimitive.content,
-                        cover = obj["vertical_cover"]?.jsonPrimitive?.content,
-                        title = obj["title"]?.jsonPrimitive?.content,
-                        isFinished = obj["is_finish"]?.asMangaIsFinish()
-                    )
-                }
-            else -> throw Error("board not found")
-        }
-
-    override suspend fun getMangaImpl(mangaId: String): MangaDetailDto =
-        api.getComicDetail(mangaId)
+    override suspend fun getMangaImpl(mangaId: String): MangaDetailDto {
+        return api.getComicDetail(mangaId)
             .body<JsonObject>()
             .let { it["data"]!!.jsonObject }
             .let { obj ->
@@ -155,9 +163,10 @@ class Bilibili : Source() {
                     }.reversed()
                 )
             }
+    }
 
-    override suspend fun getContentImpl(mangaId: String, chapterId: String): List<String> =
-        api.getImageIndex(chapterId)
+    override suspend fun getContentImpl(mangaId: String, chapterId: String): List<String> {
+        return api.getImageIndex(chapterId)
             .body<JsonObject>()
             .let { it["data"]!!.jsonObject }
             .let { obj -> obj["images"]!!.jsonArray.obj.map { it["path"]!!.jsonPrimitive.content } }
@@ -169,6 +178,7 @@ class Bilibili : Source() {
                 val token = it["token"]!!.jsonPrimitive.content
                 "$url?token=$token"
             }
+    }
 
 
     override suspend fun getImageImpl(url: String) = withContext(Dispatchers.IO) {

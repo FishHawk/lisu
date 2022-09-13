@@ -31,7 +31,7 @@ class Library(private val path: Path) {
 
     fun getBoard(boardId: BoardId, page: Int): List<MangaDto>? {
         return when (boardId) {
-            BoardId.Latest -> search(page, "")
+            BoardId.Main -> search(page, "")
             else -> null
         }
     }
@@ -60,7 +60,9 @@ class Library(private val path: Path) {
 
     companion object {
         const val lang = "local"
-        val boardModels: Map<BoardId, BoardModel> =
-            mapOf(BoardId.Latest to emptyMap())
+        val boardModel: Map<BoardId, BoardModel> = mapOf(
+            BoardId.Search to BoardModel(),
+            BoardId.Main to BoardModel(),
+        )
     }
 }

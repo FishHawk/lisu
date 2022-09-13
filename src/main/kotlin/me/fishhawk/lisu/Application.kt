@@ -18,19 +18,15 @@ import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import kotlinx.cli.optional
 import kotlinx.serialization.json.Json
-import me.fishhawk.lisu.api.HttpException
-import me.fishhawk.lisu.api.libraryRoutes
-import me.fishhawk.lisu.api.providerRoutes
-import me.fishhawk.lisu.api.systemRoutes
+import me.fishhawk.lisu.api.*
 import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
-import me.fishhawk.lisu.api.ProviderManager
 import me.fishhawk.lisu.source.SourceManager
-import me.fishhawk.lisu.util.setFileDescription
-import me.fishhawk.lisu.util.setUserXorgComment
 import kotlin.io.path.Path
 
 fun main(args: Array<String>) {
+//    System.setProperty("java.net.useSystemProxies", "true")
+
     val parser = ArgParser("lisu")
     val libraryPath by parser.argument(ArgType.String, description = "Library path").optional().default("./")
     val port by parser.option(ArgType.Int, shortName = "p", description = "Backend port").default(8080)

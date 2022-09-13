@@ -6,6 +6,7 @@ import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
+import io.ktor.http.*
 import me.fishhawk.lisu.source.BoardId
 import me.fishhawk.lisu.source.saveTestImage
 
@@ -13,22 +14,27 @@ class BilibiliTest : DescribeSpec({
     describe("Source test: bilibili") {
         val source = Bilibili()
 
-        it("#search") {
-            source.search(0, "迷宫饭").shouldBeSuccess()
-                .first().title.shouldBe("迷宫饭")
+        it("#getBoard Main") {
+            source.getBoard(BoardId.Main, 0, Parameters.build {
+                append("题材", "0")
+                append("地区", "0")
+                append("进度", "0")
+                append("收费", "0")
+                append("排序", "0")
+            }).shouldBeSuccess().shouldNotBeEmpty()
         }
 
-        it("#getBoard") {
-            listOf(
-                source.getBoard(BoardId.Popular.id, 0, mapOf("type" to 0)),
-                source.getBoard(BoardId.Latest.id, 0, emptyMap()),
-                source.getBoard(
-                    BoardId.Category.id, 0,
-                    mapOf("style" to 0, "area" to 0, "isFinish" to 0, "isFree" to 0, "order" to 0)
-                ),
-            ).forEach {
-                it.shouldBeSuccess().shouldNotBeEmpty()
-            }
+        it("#getBoard Rank") {
+            source.getBoard(BoardId.Rank, 0, Parameters.build {
+                append("榜单", "0")
+            }).shouldBeSuccess().shouldNotBeEmpty()
+        }
+
+        it("#getBoard Search") {
+            source.getBoard(BoardId.Search, 0, Parameters.build {
+                append("keywords", "迷宫饭")
+            }).shouldBeSuccess().shouldNotBeEmpty()
+                .first().title.shouldBe("迷宫饭")
         }
 
         val mangaId = "28284"

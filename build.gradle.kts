@@ -1,7 +1,7 @@
 plugins {
     application
-    kotlin("jvm") version "1.5.30"
-    kotlin("plugin.serialization") version "1.5.30"
+    kotlin("jvm") version "1.7.0"
+    kotlin("plugin.serialization") version "1.7.0"
     id("com.github.johnrengelman.shadow") version "7.1.0"
 }
 
@@ -14,9 +14,9 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.5")
 
-    val ktorVersion = "2.0.2"
+    val ktorVersion = "2.1.0"
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -29,7 +29,7 @@ dependencies {
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
 
     implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-cio:$ktorVersion")
+    implementation("io.ktor:ktor-client-java:$ktorVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
 
     implementation("org.codehaus.janino:janino:3.1.7")
@@ -39,10 +39,10 @@ dependencies {
 
     implementation("com.tfowl.ktor:ktor-jsoup:2.0.0")
 
-    val krontabVersion = "0.7.2"
+    val krontabVersion = "0.8.0"
     implementation("dev.inmo:krontab:$krontabVersion")
 
-    val kotestVersion = "5.3.0"
+    val kotestVersion = "5.4.2"
     testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-ktor:4.4.3")
@@ -50,15 +50,26 @@ dependencies {
 
 application {
     mainClass.set("me.fishhawk.lisu.ApplicationKt")
+    applicationDefaultJvmArgs = listOf("--Djava.net.useSystemProxies=true")
 }
 
 tasks.test {
     useJUnitPlatform()
 }
 
-tasks.shadowJar {
-    archiveClassifier.set("")
-    manifest {
-        attributes(Pair("Main-Class", "me.fishhawk.ApplicationKt"))
-    }
-}
+//tasks.shadowJar {
+//    archiveClassifier.set("")
+//    manifest {
+//        attributes(Pair("Main-Class", "me.fishhawk.ApplicationKt"))
+//    }
+//}
+//
+//tasks {
+//    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+//        archiveBaseName.set("shadow")
+//        mergeServiceFiles()
+//        manifest {
+//            attributes(mapOf("Main-Class" to "com.github.csolem.gradle.shadow.kotlin.example.App"))
+//        }
+//    }
+//}

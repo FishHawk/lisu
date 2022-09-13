@@ -9,7 +9,6 @@ import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.util.*
 import me.fishhawk.lisu.library.Library
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.model.*
@@ -30,9 +29,6 @@ private object ProviderLocation {
 
     @Location("/provider/{providerId}/logout")
     data class Logout(val providerId: String)
-
-    @Location("/provider/{providerId}/search")
-    data class Search(val providerId: String, val page: Int, val keywords: String)
 
     @Location("/provider/{providerId}/board/{boardId}")
     data class Board(val providerId: String, val boardId: BoardId, val page: Int)
@@ -102,14 +98,8 @@ fun Route.providerRoutes(providerManger: ProviderManager) {
         call.respondText("Success")
     }
 
-    get<ProviderLocation.Search> { loc ->
-        val provider = providerManger.getProvider(loc.providerId).ensure("provider")
-        val mangas = provider.search(loc.page, loc.keywords)
-        call.respond(mangas)
-    }
-
     get<ProviderLocation.Board> { loc ->
-        val filters = call.request.queryParameters.toMap().mapValues { it.value.first().toInt() }
+        val filters = call.request.queryParameters
         val provider = providerManger.getProvider(loc.providerId).ensure("provider")
         val mangas = provider.getBoard(loc.boardId, loc.page, filters).ensure("board")
         call.respond(mangas)
@@ -147,8 +137,7 @@ fun Route.providerRoutes(providerManger: ProviderManager) {
 }
 
 interface Provider {
-    suspend fun search(page: Int, keywords: String): List<MangaDto>
-    suspend fun getBoard(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto>?
+    suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto>?
     suspend fun getManga(mangaId: String): MangaDetailDto?
     suspend fun getCover(mangaId: String, imageId: String): Image?
     suspend fun getContent(mangaId: String, collectionId: String, chapterId: String): List<String>?
@@ -164,12 +153,7 @@ class LocalProvider(
     private fun MangaDetailDto.updateMangaState() =
         copy(state = MangaState.Local)
 
-    override suspend fun search(page: Int, keywords: String): List<MangaDto> {
-        return library.search(page, keywords)
-            .map { it.updateMangaState() }
-    }
-
-    override suspend fun getBoard(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto>? {
+    override suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto>? {
         return library.getBoard(boardId, page)
             ?.map { it.updateMangaState() }
     }
@@ -219,12 +203,7 @@ class RemoteProvider(
         return source.commentFeature!!.getComment(mangaId, page).getOrThrow()
     }
 
-    override suspend fun search(page: Int, keywords: String): List<MangaDto> {
-        return source.search(page, keywords).getOrThrow()
-            .map { it.updateMangaState() }
-    }
-
-    override suspend fun getBoard(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto> {
+    override suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
         return source.getBoard(boardId, page, filters).getOrThrow()
             .map { it.updateMangaState() }
     }
@@ -248,10 +227,8 @@ class RemoteProvider(
 
     override suspend fun getImage(mangaId: String, collectionId: String, chapterId: String, imageId: String): Image? {
         // Using Cache
-        val a = source.getImage(imageId)
-        println(a)
         return library?.getManga(mangaId)?.getChapter(collectionId, chapterId)?.getImage(imageId)
-            ?: a.getOrNull()
+            ?: source.getImage(imageId).getOrNull()
 
     }
 }
@@ -266,16 +243,22 @@ class ProviderManager(
 
         val remoteProviders = sources.map {
             ProviderDto(
-                it.id,
-                it.lang,
-                it.boardModels,
-                it.loginFeature?.isLogged(),
-                it.loginFeature?.loginSite
+                id = it.id,
+                lang = it.lang,
+                boardModels = it.boardModel,
+                isLogged = it.loginFeature?.isLogged(),
+                loginSite = it.loginFeature?.loginSite
             )
         }
         val localProviders = libraries
             .filter { library -> sources.none { source -> source.id == library.id } }
-            .map { ProviderDto(it.id, Library.lang, Library.boardModels) }
+            .map {
+                ProviderDto(
+                    id = it.id,
+                    lang = Library.lang,
+                    boardModels = Library.boardModel
+                )
+            }
         return remoteProviders + localProviders
     }
 

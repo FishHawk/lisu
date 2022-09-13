@@ -1,28 +1,53 @@
 package me.fishhawk.lisu.source
 
+import io.ktor.http.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.CommentDto
 import me.fishhawk.lisu.model.MangaDetailDto
 import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.util.runCatchingException
 
-enum class BoardId { Ranking, Latest, Category }
-typealias BoardModel = Map<String, List<String>>
+enum class BoardId { Main, Rank, Search }
+
+@Serializable
+sealed interface FilterModel {
+    @Serializable
+    @SerialName("Text")
+    object Text : FilterModel
+
+    @Serializable
+    @SerialName("Switch")
+    data class Switch(val default: Boolean = false) : FilterModel
+
+    @Serializable
+    @SerialName("Select")
+    data class Select(val options: List<String>) : FilterModel
+
+    @Serializable
+    @SerialName("MultipleSelect")
+    data class MultipleSelect(val options: List<String>) : FilterModel
+}
+
+@Serializable
+data class BoardModel(
+    val hasSearchBar: Boolean = false,
+    val base: Map<String, FilterModel> = emptyMap(),
+    val advance: Map<String, FilterModel> = emptyMap(),
+)
 
 abstract class Source {
     abstract val id: String
     abstract val lang: String
-    abstract val boardModels: Map<BoardId, BoardModel>
+
+    abstract val boardModel: Map<BoardId, BoardModel>
 
     open val loginFeature: LoginFeature? = null
     open val commentFeature: CommentFeature? = null
 
-    protected abstract suspend fun searchImpl(page: Int, keywords: String): List<MangaDto>
-    suspend fun search(page: Int, keywords: String) =
-        runCatchingException { searchImpl(page = page, keywords = keywords) }
-
-    protected abstract suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto>
-    suspend fun getBoard(boardId: BoardId, page: Int, filters: Map<String, Int>) =
+    protected abstract suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto>
+    suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters) =
         runCatchingException { getBoardImpl(boardId = boardId, page = page, filters = filters) }
 
     protected abstract suspend fun getMangaImpl(mangaId: String): MangaDetailDto
@@ -49,4 +74,12 @@ abstract class Source {
         suspend fun getComment(mangaId: String, page: Int) =
             runCatchingException { getCommentImpl(mangaId = mangaId, page = page) }
     }
+
+    protected fun Parameters.string(name: String) = get(name) ?: ""
+    protected fun Parameters.int(name: String) = get(name)?.toInt() ?: 0
+    protected fun Parameters.boolean(name: String, default: Boolean = false) = get(name)?.toBooleanStrict() ?: default
+    protected fun Parameters.set(name: String) =
+        get(name)?.split(',')?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+
+    protected fun Parameters.keywords() = get("keywords") ?: ""
 }

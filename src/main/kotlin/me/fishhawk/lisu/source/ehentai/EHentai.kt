@@ -3,6 +3,7 @@ package me.fishhawk.lisu.source.ehentai
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.util.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
@@ -24,33 +25,83 @@ fun getId(url: String): String {
     return "$galleryId.$galleryToken"
 }
 
+private object R {
+    const val genres = "Genres"
+    const val searchGalleryName = "Search Gallery Name"
+    const val searchGalleryTags = "Search Gallery Tags"
+    const val searchGalleryDescription = "Search Gallery Description"
+    const val searchExpungedGalleries = "Search Expunged Galleries"
+    const val onlyShowGalleriesWithTorrents = "Only Show Galleries With Torrents"
+    const val searchLowPowerTags = "Search Low-Power Tags"
+    const val searchDownvotedTags = "Search Downvoted Tags"
+    const val minimumRating = "Minimum Rating"
+    const val minimumPages = "Minimum Pages"
+    const val maximumPages = "Maximum Pages"
+}
+
 class EHentai : Source() {
     override val id: String = "E-Hentai"
     override val lang: String = "en"
 
-    override val boardModels: Map<BoardId, BoardModel> = mapOf(
-        BoardId.Ranking to emptyMap(),
-        BoardId.Latest to mapOf(),
-        BoardId.Ranking to mapOf("type" to Api.toplistTypes.map { it.name }),
+    override val boardModel: Map<BoardId, BoardModel> = mapOf(
+        BoardId.Main to BoardModel(
+            hasSearchBar = true,
+            advance = mapOf(
+                R.genres to FilterModel.MultipleSelect(Api.latestGenres.map { it.name }),
+                R.searchGalleryName to FilterModel.Switch(true),
+                R.searchGalleryTags to FilterModel.Switch(true),
+                R.searchGalleryDescription to FilterModel.Switch(),
+                R.searchExpungedGalleries to FilterModel.Switch(),
+                R.onlyShowGalleriesWithTorrents to FilterModel.Switch(),
+                R.searchLowPowerTags to FilterModel.Switch(),
+                R.searchDownvotedTags to FilterModel.Switch(),
+                R.minimumRating to FilterModel.Select(Api.latestRatings.map { it.name }),
+                R.minimumPages to FilterModel.Text,
+                R.maximumPages to FilterModel.Text,
+            )
+        ),
+        BoardId.Rank to BoardModel(
+            base = mapOf(
+                "Type" to FilterModel.Select(listOf("Popular") + Api.toplistTypes.map { it.name })
+            ),
+        ),
     )
 
     private val api = Api()
 
-    override suspend fun searchImpl(page: Int, keywords: String): List<MangaDto> {
-        TODO("Not yet implemented")
-    }
-
-    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Map<String, Int>): List<MangaDto> =
-        when (boardId) {
-//            BoardId.Ranking -> if (page > 0) emptyList() else api.popular().parseMangaList()
-            BoardId.Ranking -> api.toplist(page, filters["type"]!!).parseMangaList()
-            BoardId.Latest -> api.latest(page).parseMangaList()
-            else -> throw Error("board not found")
+    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
+        return when (boardId) {
+            BoardId.Main -> api.latest(
+                page,
+                keywords = filters.keywords(),
+                genres = filters.set(R.genres).map { Api.latestGenres[it] }.toSet(),
+                searchGalleryName = filters.boolean(R.searchGalleryName, true),
+                searchGalleryTags = filters.boolean(R.searchGalleryTags, true),
+                searchGalleryDescription = filters.boolean(R.searchGalleryDescription),
+                searchExpungedGalleries = filters.boolean(R.searchExpungedGalleries),
+                onlyShowGalleriesWithTorrents = filters.boolean(R.onlyShowGalleriesWithTorrents),
+                searchLowPowerTags = filters.boolean(R.searchLowPowerTags),
+                searchDownvotedTags = filters.boolean(R.searchDownvotedTags),
+                minimumRating = Api.latestRatings[filters.int(R.minimumRating)],
+                minimumPages = filters.string(R.minimumPages),
+                maximumPages = filters.string(R.maximumPages),
+            ).parseMangaList()
+            BoardId.Rank -> {
+                val type = filters.int("Type")
+                if (type == 0) {
+                    if (page > 0) emptyList()
+                    else api.popular().parseMangaList()
+                } else {
+                    api.toplist(page, Api.toplistTypes[type]).parseMangaList()
+                }
+            }
+            else -> throw Error("board not support")
         }
+    }
 
     override suspend fun getMangaImpl(mangaId: String): MangaDetailDto {
         val (galleryId, galleryToken) = mangaId.split(".", limit = 2)
-        api.getGallery(galleryId, galleryToken)
+        return api.getGallery(galleryId, galleryToken)
             .let { doc ->
                 val metadata = GalleryMetadata().apply {
                     cover = doc.select("#gd1 div").attr("style").ifBlank { null }?.let {
@@ -82,7 +133,7 @@ class EHentai : Source() {
                     }
                 }
 
-                return MangaDetailDto(
+                MangaDetailDto(
                     providerId = id,
                     id = mangaId,
                     cover = metadata.cover,

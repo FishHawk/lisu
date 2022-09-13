@@ -1,9 +1,11 @@
 package me.fishhawk.lisu.source.ehentai
 
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
+import io.ktor.http.*
 import me.fishhawk.lisu.source.BoardId
 import me.fishhawk.lisu.source.saveTestImage
 
@@ -11,14 +13,19 @@ class EHentaiTest : DescribeSpec({
     describe("Source test: ehentai api") {
         val source = EHentai()
 
-        it("#getBoard") {
-            listOf(
-                source.getBoard(BoardId.Popular.id, 0, emptyMap()),
-                source.getBoard(BoardId.Latest.id, 0, emptyMap()),
-                source.getBoard(BoardId.Ranking.id, 0, mapOf("type" to 0)),
-            ).forEach {
-                it.shouldBeSuccess().shouldNotBeEmpty()
-            }
+        it("#getBoard Main") {
+            source.getBoard(BoardId.Main, 0, Parameters.Empty)
+                .shouldBeSuccess().shouldNotBeEmpty()
+        }
+
+        it("#getBoard Rank") {
+            source.getBoard(BoardId.Rank, 0, Parameters.build {
+                append("Type", "0")
+            }).shouldBeSuccess().shouldNotBeEmpty()
+
+            source.getBoard(BoardId.Rank, 0, Parameters.build {
+                append("Type", "1")
+            }).shouldBeSuccess().shouldNotBeEmpty()
         }
 
         val mangaId = "2237436.b6b5a0d937"

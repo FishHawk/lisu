@@ -1,11 +1,10 @@
 package me.fishhawk.lisu.source.bilibili
 
 import io.ktor.client.*
-import io.ktor.client.engine.cio.*
+import io.ktor.client.engine.java.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.util.date.*
@@ -17,7 +16,7 @@ import java.time.ZonedDateTime
 
 class Api {
     private val cookiesStorage = AcceptAllCookiesStorage()
-    private val client = HttpClient(CIO) {
+    private val client = HttpClient(Java) {
         install(HttpCookies) {
             storage = cookiesStorage
         }
