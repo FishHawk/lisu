@@ -44,6 +44,7 @@ abstract class Source {
     abstract val boardModel: Map<BoardId, BoardModel>
 
     open val loginFeature: LoginFeature? = null
+
     open val commentFeature: CommentFeature? = null
 
     protected abstract suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto>
@@ -62,11 +63,22 @@ abstract class Source {
     suspend fun getImage(url: String) =
         runCatchingException { getImageImpl(url = url) }
 
-    interface LoginFeature {
-        val loginSite: String
-        suspend fun isLogged(): Boolean
-        suspend fun logout()
-        suspend fun login(cookies: Map<String, String>): Boolean
+    abstract class LoginFeature {
+        abstract suspend fun isLogged(): Boolean
+        abstract suspend fun logout()
+
+        open val cookiesLogin: CookiesLogin? = null
+        open val passwordLogin: PasswordLogin? = null
+
+        interface CookiesLogin {
+            val loginSite: String
+            val cookieNames: List<String>
+            suspend fun login(cookies: Map<String, String>): Boolean
+        }
+
+        interface PasswordLogin {
+            suspend fun login(username: String, password: String): Boolean
+        }
     }
 
     abstract class CommentFeature {

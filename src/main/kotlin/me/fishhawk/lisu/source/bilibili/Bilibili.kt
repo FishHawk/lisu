@@ -34,12 +34,16 @@ class Bilibili : Source() {
 
     private val api = Api()
 
-    override val loginFeature = object : LoginFeature {
-        override val loginSite = Api.baseUrl
+    override val loginFeature = object : LoginFeature() {
         override suspend fun isLogged() = api.isLogged()
         override suspend fun logout() = api.logout()
-        override suspend fun login(cookies: Map<String, String>): Boolean {
-            return cookies[Api.SESSDATA]?.let { api.login(it) } ?: false
+
+        override val cookiesLogin = object : CookiesLogin {
+            override val loginSite = Api.baseUrl
+            override val cookieNames = listOf(Api.SESSDATA)
+            override suspend fun login(cookies: Map<String, String>): Boolean {
+                return cookies[Api.SESSDATA]?.let { api.login(it) } ?: false
+            }
         }
     }
 

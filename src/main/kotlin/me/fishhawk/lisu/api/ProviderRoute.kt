@@ -24,8 +24,11 @@ private object ProviderLocation {
     @Location("/provider/{providerId}/icon")
     data class Icon(val providerId: String)
 
-    @Location("/provider/{providerId}/login")
-    data class Login(val providerId: String)
+    @Location("/provider/{providerId}/login-cookies")
+    data class LoginByCookies(val providerId: String)
+
+    @Location("/provider/{providerId}/login-password")
+    data class LoginByPassword(val providerId: String, val username: String, val password: String)
 
     @Location("/provider/{providerId}/logout")
     data class Logout(val providerId: String)
@@ -84,10 +87,17 @@ fun Route.providerRoutes(providerManger: ProviderManager) {
         call.respondImage(image)
     }
 
-    post<ProviderLocation.Login> { loc ->
+    post<ProviderLocation.LoginByCookies> { loc ->
         val cookies = call.receive<Map<String, String>>()
         val provider = providerManger.getRemoteProvider(loc.providerId).ensure("provider")
-        val isSuccess = provider.login(cookies)
+        val isSuccess = provider.loginByCookies(cookies)
+        if (isSuccess) call.respondText("Success")
+        else call.respondText(status = HttpStatusCode.InternalServerError, text = "")
+    }
+
+    post<ProviderLocation.LoginByPassword> { loc ->
+        val provider = providerManger.getRemoteProvider(loc.providerId).ensure("provider")
+        val isSuccess = provider.loginByPassword(loc.username, loc.password)
         if (isSuccess) call.respondText("Success")
         else call.respondText(status = HttpStatusCode.InternalServerError, text = "")
     }
@@ -191,8 +201,12 @@ class RemoteProvider(
             ?.let { Image(ContentType.Image.PNG, it) }
     }
 
-    suspend fun login(cookies: Map<String, String>): Boolean {
-        return source.loginFeature?.login(cookies) ?: false
+    suspend fun loginByCookies(cookies: Map<String, String>): Boolean {
+        return source.loginFeature?.cookiesLogin?.login(cookies) ?: false
+    }
+
+    suspend fun loginByPassword(username: String, password: String): Boolean {
+        return source.loginFeature?.passwordLogin?.login(username, password) ?: false
     }
 
     suspend fun logout() {
@@ -229,7 +243,6 @@ class RemoteProvider(
         // Using Cache
         return library?.getManga(mangaId)?.getChapter(collectionId, chapterId)?.getImage(imageId)
             ?: source.getImage(imageId).getOrNull()
-
     }
 }
 
@@ -241,24 +254,10 @@ class ProviderManager(
         val sources = sourceManager.listSources()
         val libraries = libraryManager.listLibraries()
 
-        val remoteProviders = sources.map {
-            ProviderDto(
-                id = it.id,
-                lang = it.lang,
-                boardModels = it.boardModel,
-                isLogged = it.loginFeature?.isLogged(),
-                loginSite = it.loginFeature?.loginSite
-            )
-        }
+        val remoteProviders = sources.map { ProviderDto.fromSource(it) }
         val localProviders = libraries
             .filter { library -> sources.none { source -> source.id == library.id } }
-            .map {
-                ProviderDto(
-                    id = it.id,
-                    lang = Library.lang,
-                    boardModels = Library.boardModel
-                )
-            }
+            .map { ProviderDto.fromLibrary(it) }
         return remoteProviders + localProviders
     }
 
