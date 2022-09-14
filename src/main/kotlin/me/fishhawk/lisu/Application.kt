@@ -25,66 +25,72 @@ import me.fishhawk.lisu.source.SourceManager
 import kotlin.io.path.Path
 
 fun main(args: Array<String>) {
-//    System.setProperty("java.net.useSystemProxies", "true")
-
+    // Parse arguments.
     val parser = ArgParser("lisu")
-    val libraryPath by parser.argument(ArgType.String, description = "Library path").optional().default("./")
-    val port by parser.option(ArgType.Int, shortName = "p", description = "Backend port").default(8080)
+
+    val libraryPath by parser.argument(
+        type = ArgType.String,
+        description = "Library path"
+    ).optional().default("./")
+
+    val port by parser.option(
+        type = ArgType.Int,
+        fullName = "port",
+        shortName = "p",
+        description = "Backend port"
+    ).default(8080)
+
     parser.parse(args)
 
-    val libraryManager = LibraryManager(Path(libraryPath))
+    // Create singleton.
+    val libraryManager = LibraryManager(
+        path = Path(libraryPath),
+    )
     val sourceManager = SourceManager()
-    val providerManager = ProviderManager(libraryManager, sourceManager)
-    val downloader = Downloader(libraryManager, sourceManager)
+    val providerManager = ProviderManager(
+        libraryManager = libraryManager,
+        sourceManager = sourceManager,
+    )
+    val downloader = Downloader(
+        libraryManager = libraryManager,
+        sourceManager = sourceManager,
+    )
 
+    // Start server.
     embeddedServer(Netty, port) {
-        lisuModule(
-            libraryManager,
-            sourceManager,
-            providerManager,
-            downloader
-        )
+        install(Locations)
+
+        install(ContentNegotiation) {
+            json(Json {
+                isLenient = true
+            })
+        }
+
+        install(StatusPages) {
+            exception<NotFoundException> { call, cause ->
+                call.respondText(cause.localizedMessage, status = HttpStatusCode.NotFound)
+            }
+            exception<Throwable> { call, cause ->
+                call.respondText(cause.localizedMessage, status = HttpStatusCode.InternalServerError)
+            }
+            exception<HttpException> { call, cause ->
+                call.respondText(cause.localizedMessage, status = cause.status)
+            }
+        }
+
+        install(CallLogging) {
+            format { call ->
+                val status = call.response.status()
+                val httpMethod = call.request.httpMethod.value
+                val uri = call.request.uri
+                "$httpMethod-$status $uri"
+            }
+        }
+
+        routing {
+            libraryRoutes(libraryManager, sourceManager, downloader)
+            providerRoutes(providerManager)
+            systemRoutes()
+        }
     }.start(wait = true)
-}
-
-private fun Application.lisuModule(
-    libraryManager: LibraryManager,
-    sourceManager: SourceManager,
-    providerManager: ProviderManager,
-    downloader: Downloader
-) {
-    install(Locations)
-
-    install(ContentNegotiation) {
-        json(Json {
-            isLenient = true
-        })
-    }
-
-    install(StatusPages) {
-        exception<NotFoundException> { call, cause ->
-            call.respondText(cause.localizedMessage, status = HttpStatusCode.NotFound)
-        }
-        exception<Throwable> { call, cause ->
-            call.respondText(cause.localizedMessage, status = HttpStatusCode.InternalServerError)
-        }
-        exception<HttpException> { call, cause ->
-            call.respondText(cause.localizedMessage, status = cause.status)
-        }
-    }
-
-    install(CallLogging) {
-        format { call ->
-            val status = call.response.status()
-            val httpMethod = call.request.httpMethod.value
-            val uri = call.request.uri
-            "$httpMethod-$status $uri"
-        }
-    }
-
-    routing {
-        libraryRoutes(libraryManager, sourceManager, downloader)
-        providerRoutes(providerManager)
-        systemRoutes()
-    }
 }
