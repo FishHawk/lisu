@@ -4,13 +4,62 @@ import com.tfowl.ktor.client.features.JsoupPlugin
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.java.*
+import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.util.date.*
 import org.jsoup.nodes.Document
+import java.time.ZonedDateTime
 
-class Api {
+class Api(enableExHentai: Boolean) {
+    private val cookiesStorage = AcceptAllCookiesStorage()
     private val client = HttpClient(Java) {
+        install(HttpCookies) {
+            storage = cookiesStorage
+        }
         install(JsoupPlugin)
         expectSuccess = true
+    }
+
+    private val domain = if (enableExHentai) ".exhentai.org" else ".e-hentai.org"
+    private val baseUrl = if (enableExHentai) exHentaiBaseUrl else eHentaiBaseUrl
+
+    suspend fun isLogged() =
+        cookiesStorage.get(Url(baseUrl)).any { it.name == ipb_pass_hash }
+
+    suspend fun logout() {
+        cookiesStorage.addCookie(baseUrl, Cookie(name = ipb_member_id, value = "", expires = GMTDate.START))
+        cookiesStorage.addCookie(baseUrl, Cookie(name = ipb_pass_hash, value = "", expires = GMTDate.START))
+        cookiesStorage.addCookie(baseUrl, Cookie(name = igneous, value = "", expires = GMTDate.START))
+    }
+
+    suspend fun login(
+        ipb_member_id: String,
+        ipb_pass_hash: String,
+        igneous: String
+    ): Boolean {
+        listOf(
+            Api.ipb_member_id to ipb_member_id,
+            Api.ipb_pass_hash to ipb_pass_hash,
+            Api.igneous to igneous,
+        ).forEach { (name, value) ->
+            cookiesStorage.addCookie(
+                baseUrl,
+                Cookie(
+                    name = name,
+                    value = value,
+                    expires = GMTDate(ZonedDateTime.now().plusDays(30 * 12).toInstant().toEpochMilli()),
+                    domain = domain,
+                    path = "/",
+                    httpOnly = true,
+                )
+            )
+        }
+        return true
+//        val status = client.get(baseUrl).status
+//        val isSuccess = status == HttpStatusCode.OK
+//        if (!isSuccess) logout()
+//        return isSuccess
     }
 
     suspend fun latest(
@@ -28,7 +77,7 @@ class Api {
         minimumPages: String,
         maximumPages: String,
     ) =
-        client.get("https://e-hentai.org/") {
+        client.get(baseUrl) {
             parameter("page", page)
             if (keywords.isNotBlank()) parameter("f_search", keywords)
             if (genres.isNotEmpty()) parameter("f_cats", 1023 - genres.sumOf { it.mask })
@@ -48,19 +97,19 @@ class Api {
         }.body<Document>()
 
     suspend fun popular() =
-        client.get("https://e-hentai.org/popular").body<Document>()
+        client.get("${baseUrl}popular").body<Document>()
 
     suspend fun toplist(page: Int, type: ToplistType) =
-        client.get("https://e-hentai.org/toplist.php") {
+        client.get("${eHentaiBaseUrl}toplist.php") {
             parameter("p", page)
             parameter("tl", type.type)
         }.body<Document>()
 
     suspend fun getGallery(id: String, token: String, page: Int = 0) =
-        client.get("https://e-hentai.org/g/$id/$token/") { parameter("p", page) }.body<Document>()
+        client.get("${baseUrl}g/$id/$token/") { parameter("p", page) }.body<Document>()
 
     suspend fun getGalleryWithComments(id: String, token: String) =
-        client.get("https://e-hentai.org/g/$id/$token/?hc=1#comments").body<Document>()
+        client.get("${baseUrl}g/$id/$token/?hc=1#comments").body<Document>()
 
     suspend fun getPage(url: String) =
         client.get(url).body<Document>()
@@ -69,6 +118,13 @@ class Api {
         client.get(url)
 
     companion object {
+        const val eHentaiBaseUrl = "https://e-hentai.org/"
+        const val exHentaiBaseUrl = "https://exhentai.org/"
+        const val loginUrl = "https://forums.e-hentai.org/index.php?act=Login&CODE=00"
+        const val ipb_member_id = "ipb_member_id"
+        const val ipb_pass_hash = "ipb_pass_hash"
+        const val igneous = "igneous"
+
         data class ToplistType(val name: String, val type: String)
 
         val toplistTypes = arrayOf(

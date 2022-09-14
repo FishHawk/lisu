@@ -2,6 +2,7 @@ package me.fishhawk.lisu.source
 
 import me.fishhawk.lisu.source.bilibili.Bilibili
 import me.fishhawk.lisu.source.ehentai.EHentai
+import me.fishhawk.lisu.source.ehentai.ExHentai
 import me.fishhawk.lisu.source.manhuaren.Manhuaren
 
 class SourceManager {
@@ -10,6 +11,7 @@ class SourceManager {
             Manhuaren(),
             Bilibili(),
             EHentai(),
+            ExHentai()
         ).associateBy { it.id }
 
     fun listSources() = sources.values

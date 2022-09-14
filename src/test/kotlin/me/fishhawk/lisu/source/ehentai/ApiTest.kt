@@ -4,7 +4,7 @@ import io.kotest.core.spec.style.DescribeSpec
 
 class ApiTest : DescribeSpec({
     describe("Source test: ehentai api") {
-        val api = Api()
+        val api = Api(false)
 
         it("#popular") { api.popular() }
 //        it("#latest") { api.latest(0) }

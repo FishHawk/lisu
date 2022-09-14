@@ -203,8 +203,8 @@ class Api {
     suspend fun getImage(url: String) = client.get(url)
 
     companion object {
-        val baseUrl = "https://manga.bilibili.com"
-        val SESSDATA = "SESSDATA"
+        const val baseUrl = "https://manga.bilibili.com"
+        const val SESSDATA = "SESSDATA"
 
         val homeHotType = arrayOf(
             "免费榜" to 1, // 前7日人气最高的免费漫画作品排行

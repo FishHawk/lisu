@@ -16,33 +16,7 @@ import me.fishhawk.lisu.model.MangaDto
 import me.fishhawk.lisu.source.*
 import org.jsoup.nodes.Document
 
-fun getId(url: String): String {
-    val pathSegments =
-        (if (url.startsWith("http")) Url(url).pathSegments
-        else url.split('/'))
-            .filterNot(String::isNullOrBlank)
-
-    val galleryId = pathSegments[1]
-    val galleryToken = pathSegments[2]
-    return "$galleryId.$galleryToken"
-}
-
-private object R {
-    const val genres = "Genres"
-    const val searchGalleryName = "Search Gallery Name"
-    const val searchGalleryTags = "Search Gallery Tags"
-    const val searchGalleryDescription = "Search Gallery Description"
-    const val searchExpungedGalleries = "Search Expunged Galleries"
-    const val onlyShowGalleriesWithTorrents = "Only Show Galleries With Torrents"
-    const val searchLowPowerTags = "Search Low-Power Tags"
-    const val searchDownvotedTags = "Search Downvoted Tags"
-    const val minimumRating = "Minimum Rating"
-    const val minimumPages = "Minimum Pages"
-    const val maximumPages = "Maximum Pages"
-}
-
-class EHentai : Source() {
-    override val id: String = "E-Hentai"
+abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
     override val lang: String = "en"
 
     override val boardModel: Map<BoardId, BoardModel> = mapOf(
@@ -69,7 +43,7 @@ class EHentai : Source() {
         ),
     )
 
-    private val api = Api()
+    protected val api = Api(enableExHentai)
 
     override val commentFeature = object : CommentFeature() {
         override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> {
@@ -234,4 +208,59 @@ class EHentai : Source() {
                     isFinished = true,
                 )
             }
+
+    companion object {
+        private fun getId(url: String): String {
+            val pathSegments =
+                (if (url.startsWith("http")) Url(url).pathSegments
+                else url.split('/'))
+                    .filterNot(String::isNullOrBlank)
+
+            val galleryId = pathSegments[1]
+            val galleryToken = pathSegments[2]
+            return "$galleryId.$galleryToken"
+        }
+
+        private object R {
+            const val genres = "Genres"
+            const val searchGalleryName = "Search Gallery Name"
+            const val searchGalleryTags = "Search Gallery Tags"
+            const val searchGalleryDescription = "Search Gallery Description"
+            const val searchExpungedGalleries = "Search Expunged Galleries"
+            const val onlyShowGalleriesWithTorrents = "Only Show Galleries With Torrents"
+            const val searchLowPowerTags = "Search Low-Power Tags"
+            const val searchDownvotedTags = "Search Downvoted Tags"
+            const val minimumRating = "Minimum Rating"
+            const val minimumPages = "Minimum Pages"
+            const val maximumPages = "Maximum Pages"
+        }
+    }
+}
+
+class EHentai : EHentaiBase(false) {
+    override val id: String = "E-Hentai"
+}
+
+class ExHentai : EHentaiBase(true) {
+    override val id: String = "ExHentai"
+    override val loginFeature = object : LoginFeature() {
+        override suspend fun isLogged() = api.isLogged()
+        override suspend fun logout() = api.logout()
+
+        override val cookiesLogin = object : CookiesLogin {
+            override val loginSite = Api.loginUrl
+            override val cookieNames = listOf(Api.ipb_member_id, Api.ipb_pass_hash, Api.igneous)
+            override suspend fun login(cookies: Map<String, String>): Boolean {
+                return api.login(
+                    ipb_member_id = cookies[Api.ipb_member_id]!!,
+                    ipb_pass_hash = cookies[Api.ipb_pass_hash]!!,
+                    igneous = cookies[Api.igneous]!!,
+                )
+            }
+        }
+//        override val passwordLogin = object : PasswordLogin {
+//            override suspend fun login(username: String, password: String): Boolean {
+//            }
+//        }
+    }
 }
