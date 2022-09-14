@@ -32,7 +32,10 @@ class Bilibili : Source() {
         BoardId.Search to BoardModel(),
     )
 
-    private val api = Api()
+    private val api = Api(
+        cookiesStorage = cookiesStorage,
+        client = client,
+    )
 
     override val loginFeature = object : LoginFeature() {
         override suspend fun isLogged() = api.isLogged()

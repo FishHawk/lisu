@@ -1,8 +1,15 @@
 package me.fishhawk.lisu.source
 
+import com.tfowl.ktor.client.features.JsoupPlugin
+import io.ktor.client.*
+import io.ktor.client.engine.java.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.cookies.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import me.fishhawk.lisu.model.Image
 import me.fishhawk.lisu.model.CommentDto
 import me.fishhawk.lisu.model.MangaDetailDto
@@ -94,4 +101,21 @@ abstract class Source {
         get(name)?.split(',')?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
 
     protected fun Parameters.keywords() = get("keywords") ?: ""
+
+    companion object {
+        val cookiesStorage = AcceptAllCookiesStorage()
+        val client = HttpClient(Java) {
+            install(HttpCookies) {
+                storage = cookiesStorage
+            }
+            install(JsoupPlugin)
+            install(ContentNegotiation) {
+                json(Json {
+                    prettyPrint = true
+                    isLenient = true
+                })
+            }
+            expectSuccess = true
+        }
+    }
 }

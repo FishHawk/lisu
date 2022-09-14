@@ -43,7 +43,11 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
         ),
     )
 
-    protected val api = Api(enableExHentai)
+    protected val api = Api(
+        enableExHentai = enableExHentai,
+        cookiesStorage = cookiesStorage,
+        client = client,
+    )
 
     override val commentFeature = object : CommentFeature() {
         override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> {

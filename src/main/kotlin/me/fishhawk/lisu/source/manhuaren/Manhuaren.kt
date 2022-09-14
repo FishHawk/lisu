@@ -29,7 +29,7 @@ class Manhuaren : Source() {
         BoardId.Search to BoardModel(),
     )
 
-    private val api = Api()
+    private val api = Api(client = client)
 
     override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
         return when (boardId) {

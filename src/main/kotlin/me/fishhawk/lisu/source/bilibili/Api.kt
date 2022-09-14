@@ -1,12 +1,9 @@
 package me.fishhawk.lisu.source.bilibili
 
 import io.ktor.client.*
-import io.ktor.client.engine.java.*
-import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import io.ktor.util.date.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
@@ -14,20 +11,10 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.time.ZonedDateTime
 
-class Api {
-    private val cookiesStorage = AcceptAllCookiesStorage()
-    private val client = HttpClient(Java) {
-        install(HttpCookies) {
-            storage = cookiesStorage
-        }
-        install(ContentNegotiation) {
-            json(Json {
-                prettyPrint = true
-                isLenient = true
-            })
-        }
-    }
-
+class Api(
+    private val cookiesStorage: CookiesStorage,
+    private val client: HttpClient,
+) {
     suspend fun isLogged() =
         cookiesStorage.get(Url(baseUrl)).any { it.name == SESSDATA }
 

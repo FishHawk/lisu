@@ -1,33 +1,14 @@
 package me.fishhawk.lisu.source.manhuaren
 
 import io.ktor.client.*
-import io.ktor.client.engine.java.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
+import io.ktor.http.*
 import java.net.URLEncoder
 import java.security.MessageDigest
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class Api {
-    private val client = HttpClient(Java) {
-        install(ContentNegotiation) {
-            json(Json {
-                prettyPrint = true
-                isLenient = true
-            })
-        }
-        defaultRequest {
-            header("Referer", "http://www.dm5.com/dm5api/")
-            header("clubReferer", "http://mangaapi.manhuaren.com/")
-            header("X-Yq-Yqci", "{\"le\": \"zh\"}")
-            header("User-Agent", "okhttp/3.11.0")
-        }
-    }
-
+class Api(private val client: HttpClient) {
     /**
      * 按关键词搜索
      * @param page - 页数，从0开始
@@ -107,11 +88,24 @@ class Api {
      * 获取图片
      * @param url - 图片url
      */
-    suspend fun getImage(url: String) = client.get(url)
+    suspend fun getImage(url: String) = client.get(url) {
+        headers {
+            append(HttpHeaders.Referrer, "http://www.dm5.com/dm5api/")
+            append("clubReferer", "http://mangaapi.manhuaren.com/")
+            append("X-Yq-Yqci", "{\"le\": \"zh\"}")
+            append(HttpHeaders.UserAgent, "okhttp/3.11.0")
+        }
+    }
 
     private suspend fun get(url: String, parameters: Map<String, String> = emptyMap()) =
         client.get("http://mangaapi.manhuaren.com$url") {
             parameters.addExtraParam().forEach { (key, value) -> parameter(key, value) }
+            headers {
+                append(HttpHeaders.Referrer, "http://www.dm5.com/dm5api/")
+                append("clubReferer", "http://mangaapi.manhuaren.com/")
+                append("X-Yq-Yqci", "{\"le\": \"zh\"}")
+                append(HttpHeaders.UserAgent, "okhttp/3.11.0")
+            }
         }
 
     private fun Map<String, String>.generateGSNHash(): String {

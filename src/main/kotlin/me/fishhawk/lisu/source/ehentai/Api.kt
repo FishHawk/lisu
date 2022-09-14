@@ -1,9 +1,7 @@
 package me.fishhawk.lisu.source.ehentai
 
-import com.tfowl.ktor.client.features.JsoupPlugin
 import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.engine.java.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -11,16 +9,11 @@ import io.ktor.util.date.*
 import org.jsoup.nodes.Document
 import java.time.ZonedDateTime
 
-class Api(enableExHentai: Boolean) {
-    private val cookiesStorage = AcceptAllCookiesStorage()
-    private val client = HttpClient(Java) {
-        install(HttpCookies) {
-            storage = cookiesStorage
-        }
-        install(JsoupPlugin)
-        expectSuccess = true
-    }
-
+class Api(
+    enableExHentai: Boolean,
+    private val cookiesStorage: CookiesStorage,
+    private val client: HttpClient,
+) {
     private val domain = if (enableExHentai) ".exhentai.org" else ".e-hentai.org"
     private val baseUrl = if (enableExHentai) exHentaiBaseUrl else eHentaiBaseUrl
 
