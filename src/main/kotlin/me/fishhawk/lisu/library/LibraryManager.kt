@@ -1,6 +1,6 @@
 package me.fishhawk.lisu.library
 
-import me.fishhawk.lisu.model.MangaDto
+import me.fishhawk.lisu.library.model.Manga
 import me.fishhawk.lisu.util.*
 import java.nio.file.Path
 
@@ -12,21 +12,27 @@ class LibraryManager(private val path: Path) {
 
     private fun listMangas() =
         listLibraries()
-            .flatMap { it.listMangas() }
+            .flatMap { library ->
+                library.listMangas().map {
+                    library.id to it
+                }
+            }
 
-    fun search(page: Int, keywords: String): List<MangaDto> {
+    fun search(page: Int, keywords: String): List<Pair<String, Manga>> {
         val filters = Filter.fromKeywords(keywords)
         return listMangas()
-            .sortedByDescending { it.path.getLastModifiedTime() }
+            .sortedByDescending { it.second.path.getLastModifiedTime() }
             .asSequence()
-            .filter { manga -> filters.all { it.isPass(manga.getSearchEntry()) } }
+            .filter { (_, manga) -> filters.all { it.isPass(manga.getSearchEntry()) } }
             .page(page = page, pageSize = 100)
-            .map { it.get() }
+            .map { (libraryId, manga) -> libraryId to manga.get() }
             .toList()
     }
 
     fun getRandomManga() =
-        listMangas().random()
+        listMangas()
+            .random()
+            .let { (libraryId, manga) -> libraryId to manga.get() }
 
     private fun getLibraryPath(id: String) =
         path.resolveChild(id)

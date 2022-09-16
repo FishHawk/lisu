@@ -9,12 +9,15 @@ import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import me.fishhawk.lisu.api.model.*
 import me.fishhawk.lisu.library.Library
 import me.fishhawk.lisu.library.LibraryManager
-import me.fishhawk.lisu.model.*
-import me.fishhawk.lisu.source.BoardId
+import me.fishhawk.lisu.source.model.BoardId
 import me.fishhawk.lisu.source.Source
 import me.fishhawk.lisu.source.SourceManager
+import me.fishhawk.lisu.source.model.Comment
+import me.fishhawk.lisu.util.Image
+import me.fishhawk.lisu.util.respondImage
 
 @OptIn(KtorExperimentalLocationsAPI::class)
 private object ProviderLocation {
@@ -157,20 +160,24 @@ interface Provider {
 class LocalProvider(
     private val library: Library
 ) : Provider {
-    private fun MangaDto.updateMangaState() =
-        copy(state = MangaState.Local)
-
-    private fun MangaDetailDto.updateMangaState() =
-        copy(state = MangaState.Local)
-
-    override suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto>? {
-        return library.getBoard(boardId, page)
-            ?.map { it.updateMangaState() }
+    override suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
+        return library.search(page, "").map {
+            MangaDto(
+                state = MangaState.Local,
+                providerId = library.id,
+                manga = it,
+            )
+        }
     }
 
     override suspend fun getManga(mangaId: String): MangaDetailDto? {
-        return library.getManga(mangaId)?.getDetail()
-            ?.updateMangaState()
+        return library.getManga(mangaId)?.getDetail()?.let {
+            MangaDetailDto(
+                state = MangaState.Local,
+                providerId = library.id,
+                manga = it,
+            )
+        }
     }
 
     override suspend fun getCover(mangaId: String, imageId: String): Image? {
@@ -190,11 +197,9 @@ class RemoteProvider(
     private val source: Source,
     private val library: Library?
 ) : Provider {
-    private fun MangaDto.updateMangaState() =
-        copy(state = if (library?.getManga(id) == null) MangaState.Remote else MangaState.RemoteInLibrary)
-
-    private fun MangaDetailDto.updateMangaState() =
-        copy(state = if (library?.getManga(id) == null) MangaState.Remote else MangaState.RemoteInLibrary)
+    private fun getMangaState(id: String) =
+        if (library?.getManga(id) == null) MangaState.Remote
+        else MangaState.RemoteInLibrary
 
     fun getIcon(): Image? {
         return source::class.java.getResourceAsStream("icon.png")
@@ -213,18 +218,28 @@ class RemoteProvider(
         source.loginFeature?.logout()
     }
 
-    suspend fun getComments(mangaId: String, page: Int): List<CommentDto> {
+    suspend fun getComments(mangaId: String, page: Int): List<Comment> {
         return source.commentFeature!!.getComment(mangaId, page).getOrThrow()
     }
 
     override suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
-        return source.getBoard(boardId, page, filters).getOrThrow()
-            .map { it.updateMangaState() }
+        return source.getBoard(boardId, page, filters).getOrThrow().map {
+            MangaDto(
+                state = getMangaState(it.id),
+                providerId = source.id,
+                manga = it,
+            )
+        }
     }
 
     override suspend fun getManga(mangaId: String): MangaDetailDto {
-        return source.getManga(mangaId).getOrThrow()
-            .updateMangaState()
+        return source.getManga(mangaId).getOrThrow().let {
+            MangaDetailDto(
+                state = getMangaState(it.id),
+                providerId = source.id,
+                manga = it,
+            )
+        }
     }
 
     override suspend fun getCover(mangaId: String, imageId: String): Image? {

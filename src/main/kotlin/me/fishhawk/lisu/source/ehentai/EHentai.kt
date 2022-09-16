@@ -9,11 +9,12 @@ import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
-import me.fishhawk.lisu.model.CommentDto
-import me.fishhawk.lisu.model.Image
-import me.fishhawk.lisu.model.MangaDetailDto
-import me.fishhawk.lisu.model.MangaDto
+import me.fishhawk.lisu.library.model.Manga
+import me.fishhawk.lisu.library.model.MangaContent
+import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.source.*
+import me.fishhawk.lisu.source.model.*
+import me.fishhawk.lisu.util.Image
 import org.jsoup.nodes.Document
 
 abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
@@ -50,26 +51,26 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
     )
 
     override val commentFeature = object : CommentFeature() {
-        override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> {
+        override suspend fun getCommentImpl(mangaId: String, page: Int): List<Comment> {
             if (page > 0) return emptyList()
             val (galleryId, galleryToken) = mangaId.split(".", limit = 2)
             return api.getGalleryWithComments(galleryId, galleryToken)
                 .select("div.gm div.c1")
                 .map { c1 ->
-                    CommentDto(
+                    Comment(
                         username = c1.select("div.c3 a").text(),
                         content = c1.select("div.c6").text(),
                         createTime = c1.select("div.c3").text()
                             .removePrefix("Posted on ")
                             .substringBefore(" by:")
-                            .asDateTimeToEpochSecond("dd MMMM yyyy, HH:mm"),
+                            .asDateTime("dd MMMM yyyy, HH:mm"),
                         vote = c1.select("div.c5 span").first()?.text()?.toInt(),
                     )
                 }
         }
     }
 
-    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
+    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<Manga> {
         return when (boardId) {
             BoardId.Main -> api.latest(
                 page,
@@ -99,7 +100,7 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
         }
     }
 
-    override suspend fun getMangaImpl(mangaId: String): MangaDetailDto {
+    override suspend fun getMangaImpl(mangaId: String): MangaDetail {
         val (galleryId, galleryToken) = mangaId.split(".", limit = 2)
         return api.getGallery(galleryId, galleryToken)
             .let { doc ->
@@ -116,7 +117,7 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
                         val key = it.select(".gdt1").text().ifBlank { null }?.trim() ?: return@forEach
                         val value = it.select(".gdt2").text().ifBlank { null }?.trim() ?: return@forEach
                         when (key.removeSuffix(":").lowercase()) {
-                            "posted" -> posted = value.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm")
+                            "posted" -> posted = value.asDateTime("yyyy-MM-dd HH:mm")
                             "length" -> length = value.removeSuffix("pages").trim().ifBlank { null }?.toInt()
                             "favorited" -> favorites = value.removeSuffix("times").trim().ifBlank { null }?.toInt()
                         }
@@ -133,14 +134,15 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
                     }
                 }
 
-                MangaDetailDto(
-                    providerId = id,
+                MangaDetail(
                     id = mangaId,
+
                     cover = metadata.cover,
                     updateTime = metadata.posted,
                     title = metadata.title ?: metadata.altTitle,
                     authors = metadata.tags[TagKeyArtist] ?: emptyList(),
                     isFinished = true,
+
                     description = StringBuilder().apply {
                         metadata.altTitle?.let { append("Alternate Title: $it\n") }
                         metadata.length?.let { append("$it pages, ") }
@@ -152,7 +154,10 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
                         }
                     }.toString().removeSuffix("\n").ifBlank { null },
                     tags = metadata.tags.filterKeys { it != TagKeyArtist },
-                    preview = doc.parseImageUrls(),
+
+                    content = MangaContent.SingleChapter(
+                        preview = doc.parseImageUrls(),
+                    ),
                 )
             }
     }
@@ -190,20 +195,19 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
             .sortedBy(Pair<Int, String>::first)
             .map { it.second }
 
-    private fun Document.parseMangaList(): List<MangaDto> =
+    private fun Document.parseMangaList(): List<Manga> =
         select("table.itg td.glname")
             .mapNotNull { it.parent() }
             .map { tr ->
                 val a = tr.select("td.gl3c a")
-                MangaDto(
-                    providerId = id,
+                Manga(
                     id = getId(a.attr("href")),
                     cover = tr.select(".glthumb img").let {
                         it.attr("data-src").ifBlank { null }
                             ?: it.attr("src").ifBlank { null }
                     },
                     updateTime = tr.select("td.gl2c div[onclick]").lastOrNull()?.text()
-                        ?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm"),
+                        ?.asDateTime("yyyy-MM-dd HH:mm"),
                     title = a.select(".glink").text(),
                     authors = a.select(".gt")
                         .map { it.attr("title") }

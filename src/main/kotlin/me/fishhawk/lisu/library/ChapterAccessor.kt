@@ -1,11 +1,9 @@
 package me.fishhawk.lisu.library
 
-import me.fishhawk.lisu.model.Image
-import me.fishhawk.lisu.model.toImage
 import me.fishhawk.lisu.util.*
 import java.nio.file.Path
 
-class Chapter(
+class ChapterAccessor(
     private val path: Path,
     private val depth: Depth
 ) {

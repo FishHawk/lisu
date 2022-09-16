@@ -1,8 +1,6 @@
 package me.fishhawk.lisu.library
 
-import me.fishhawk.lisu.model.MangaDto
-import me.fishhawk.lisu.source.BoardId
-import me.fishhawk.lisu.source.BoardModel
+import me.fishhawk.lisu.library.model.Manga
 import me.fishhawk.lisu.util.*
 import java.nio.file.Path
 
@@ -12,14 +10,14 @@ fun <T> Sequence<T>.page(page: Int, pageSize: Int): Sequence<T> =
 class Library(private val path: Path) {
     val id = path.name
 
-    fun listMangas(): List<Manga> {
+    fun listMangas(): List<MangaAccessor> {
         return path.listDirectory()
             .getOrDefault(emptyList())
             .sortedByDescending { it.getLastModifiedTime() }
-            .map { Manga(it) }
+            .map { MangaAccessor(it) }
     }
 
-    fun search(page: Int, keywords: String): List<MangaDto> {
+    fun search(page: Int, keywords: String): List<Manga> {
         val filters = Filter.fromKeywords(keywords)
         return listMangas()
             .asSequence()
@@ -29,21 +27,14 @@ class Library(private val path: Path) {
             .toList()
     }
 
-    fun getBoard(boardId: BoardId, page: Int): List<MangaDto>? {
-        return when (boardId) {
-            BoardId.Main -> search(page, "")
-            else -> null
-        }
-    }
-
     private fun getMangaPath(id: String): Result<Path> {
         return path.resolveChild(id)
     }
 
-    fun createManga(id: String): Result<Manga> {
+    fun createManga(id: String): Result<MangaAccessor> {
         return getMangaPath(id)
             .then(Path::createDirAll)
-            .map { Manga(it) }
+            .map { MangaAccessor(it) }
     }
 
     fun deleteManga(id: String): Result<Unit> {
@@ -51,18 +42,10 @@ class Library(private val path: Path) {
             .then(Path::deleteDirAll)
     }
 
-    fun getManga(id: String): Manga? {
+    fun getManga(id: String): MangaAccessor? {
         return getMangaPath(id)
             .getOrNull()
             ?.takeIf { it.isDirectory() }
-            ?.let { Manga(it) }
-    }
-
-    companion object {
-        const val lang = "local"
-        val boardModel: Map<BoardId, BoardModel> = mapOf(
-            BoardId.Search to BoardModel(),
-            BoardId.Main to BoardModel(),
-        )
+            ?.let { MangaAccessor(it) }
     }
 }

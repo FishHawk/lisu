@@ -7,6 +7,9 @@ import java.nio.charset.Charset
 import java.nio.file.*
 import java.nio.file.attribute.FileAttribute
 import java.nio.file.attribute.FileTime
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.*
 import kotlin.io.path.*
 
@@ -101,7 +104,7 @@ fun Path.setDosHidden() =
         )
     }
 
-fun Path.setFileDescription(title:String) =
+fun Path.setFileDescription(title: String) =
     runCatchingException {
         setAttribute(
             "user:Doc.Title",
@@ -119,11 +122,17 @@ fun Path.setUserXorgComment(comment: String) =
         )
     }
 
-fun Path.getLastModifiedTime(vararg options: LinkOption): FileTime =
-    Files.getLastModifiedTime(this, *options)
+fun Path.getLastModifiedTime(vararg options: LinkOption): LocalDateTime =
+    LocalDateTime.ofInstant(
+        Files.getLastModifiedTime(this, *options).toInstant(),
+        ZoneId.systemDefault(),
+    )
 
-fun Path.setLastModifiedTime(value: FileTime): Path =
-    Files.setLastModifiedTime(this, value)
+fun Path.setLastModifiedTime(value: LocalDateTime): Path =
+    Files.setLastModifiedTime(
+        this,
+        FileTime.from(value.toInstant(ZoneOffset.UTC)),
+    )
 
 fun Iterable<Path>.sortedAlphanumeric() =
     sortedWith(alphanumericOrder())

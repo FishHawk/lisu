@@ -1,28 +1,32 @@
 package me.fishhawk.lisu.source
 
 import kotlinx.serialization.json.*
-import me.fishhawk.lisu.model.Image
+import me.fishhawk.lisu.util.Image
 import me.fishhawk.lisu.util.createDirAll
 import me.fishhawk.lisu.util.outputStream
 import me.fishhawk.lisu.util.then
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.*
 import kotlin.io.path.Path
 
-internal fun String.asDateTimeToEpochSecond(pattern: String) =
+internal fun Long.asTimestamp() =
+    LocalDateTime.ofInstant(
+        Instant.ofEpochMilli(this),
+        ZoneId.systemDefault(),
+    )
+
+internal fun String.asDateTime(pattern: String) =
     LocalDateTime
         .parse(this, DateTimeFormatter.ofPattern(pattern))
-        .atZone(ZoneId.systemDefault())
-        .toEpochSecond()
 
-internal fun String.asDateToEpochSecond(pattern: String) =
+internal fun String.asDate(pattern: String) =
     LocalDate
         .parse(this, DateTimeFormatter.ofPattern(pattern))
         .atStartOfDay()
-        .atZone(ZoneId.systemDefault())
-        .toEpochSecond()
 
 internal val JsonElement.jsonObjectOrNull: JsonObject?
     get() = this as? JsonObject

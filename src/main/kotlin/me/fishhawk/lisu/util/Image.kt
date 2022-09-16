@@ -1,9 +1,8 @@
-package me.fishhawk.lisu.model
+package me.fishhawk.lisu.util
 
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
-import me.fishhawk.lisu.util.inputStream
 import java.io.InputStream
 import java.nio.file.Path
 

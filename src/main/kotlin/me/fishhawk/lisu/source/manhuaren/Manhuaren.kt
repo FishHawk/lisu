@@ -7,8 +7,13 @@ import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
-import me.fishhawk.lisu.model.*
+import me.fishhawk.lisu.library.model.Chapter
+import me.fishhawk.lisu.library.model.Manga
+import me.fishhawk.lisu.library.model.MangaContent
+import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.source.*
+import me.fishhawk.lisu.source.model.*
+import me.fishhawk.lisu.util.Image
 
 class Manhuaren : Source() {
     override val id: String = "漫画人"
@@ -31,7 +36,7 @@ class Manhuaren : Source() {
 
     private val api = Api(client = client)
 
-    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
+    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<Manga> {
         return when (boardId) {
             BoardId.Main -> api.getCategoryMangas(
                 page,
@@ -50,14 +55,13 @@ class Manhuaren : Source() {
         }
     }
 
-    private fun parseJsonArrayToMangas(arr: JsonArray): List<MangaDto> {
+    private fun parseJsonArrayToMangas(arr: JsonArray): List<Manga> {
         return arr.map {
             val obj = it.jsonObject
-            MangaDto(
-                providerId = id,
+            Manga(
                 id = obj["mangaId"]!!.jsonPrimitive.content,
                 cover = obj["mangaCoverimageUrl"]?.jsonPrimitive?.content,
-                updateTime = obj["mangaNewestTime"]?.jsonPrimitive?.content?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
+                updateTime = obj["mangaNewestTime"]?.jsonPrimitive?.content?.asDateTime("yyyy-MM-dd HH:mm:ss"),
                 title = obj["mangaName"]?.jsonPrimitive?.content,
                 authors = obj["mangaAuthor"]?.jsonPrimitive?.content?.split(",") ?: emptyList(),
                 isFinished = obj["mangaIsOver"]!!.jsonPrimitive.int == 1
@@ -65,19 +69,18 @@ class Manhuaren : Source() {
         }
     }
 
-    override suspend fun getMangaImpl(mangaId: String): MangaDetailDto {
+    override suspend fun getMangaImpl(mangaId: String): MangaDetail {
         return api.getDetail(mangaId).body<JsonObject>().let { data ->
             val obj = data["response"]!!.jsonObject
 
-            MangaDetailDto(
-                providerId = id,
+            MangaDetail(
                 id = obj["mangaId"]!!.jsonPrimitive.content,
                 cover = obj["mangaCoverimageUrl"]?.jsonPrimitive?.content.let {
                     if (it == null || it == "http://mhfm5.tel.cdndm5.com/tag/category/nopic.jpg") {
                         (obj["mangaPicimageUrl"] ?: obj["shareIcon"])?.jsonPrimitive?.content ?: ""
                     } else it
                 },
-                updateTime = obj["mangaNewestTime"]?.jsonPrimitive?.content?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss"),
+                updateTime = obj["mangaNewestTime"]?.jsonPrimitive?.content?.asDateTime("yyyy-MM-dd HH:mm:ss"),
 
                 title = obj["mangaName"]!!.jsonPrimitive.content,
                 authors = obj["mangaAuthors"]!!.jsonArray.map { it.jsonPrimitive.content },
@@ -88,21 +91,23 @@ class Manhuaren : Source() {
                     else mapOf("" to it.split(' '))
                 },
 
-                collections = mapOf(
-                    "连载" to obj["mangaWords"],
-                    "单行本" to obj["mangaRolls"],
-                    "番外" to obj["mangaEpisode"],
-                ).mapValues { arr ->
-                    arr.value!!.jsonArray.map {
-                        ChapterDto(
-                            id = it.jsonObject["sectionId"]!!.jsonPrimitive.content,
-                            name = it.jsonObject["sectionName"]!!.jsonPrimitive.content,
-                            title = it.jsonObject["sectionTitle"]!!.jsonPrimitive.content,
-                            isLocked = it.jsonObject["isMustPay"]?.jsonPrimitive?.int == 1,
-                            updateTime = it.jsonObject["releaseTime"]?.jsonPrimitive?.content?.asDateToEpochSecond("yyyy-MM-dd")
-                        )
-                    }.reversed()
-                }.filterValues { it.isNotEmpty() }
+                content = MangaContent.Collections(
+                    collections = mapOf(
+                        "连载" to obj["mangaWords"],
+                        "单行本" to obj["mangaRolls"],
+                        "番外" to obj["mangaEpisode"],
+                    ).mapValues { arr ->
+                        arr.value!!.jsonArray.map {
+                            Chapter(
+                                id = it.jsonObject["sectionId"]!!.jsonPrimitive.content,
+                                name = it.jsonObject["sectionName"]!!.jsonPrimitive.content,
+                                title = it.jsonObject["sectionTitle"]!!.jsonPrimitive.content,
+                                isLocked = it.jsonObject["isMustPay"]?.jsonPrimitive?.int == 1,
+                                updateTime = it.jsonObject["releaseTime"]?.jsonPrimitive?.content?.asDate("yyyy-MM-dd")
+                            )
+                        }.reversed()
+                    }.filterValues { it.isNotEmpty() }
+                )
             )
         }
     }

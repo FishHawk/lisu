@@ -1,5 +1,7 @@
 package me.fishhawk.lisu.source.ehentai
 
+import java.time.LocalDateTime
+
 internal const val TagKeyArtist = "artist"
 
 internal class GalleryMetadata {
@@ -10,7 +12,7 @@ internal class GalleryMetadata {
     var genre: String? = null
     var uploader: String? = null
 
-    var posted: Long? = null
+    var posted: LocalDateTime? = null
     var length: Int? = null
     var favorites: Int? = null
     var ratingCount: Int? = null

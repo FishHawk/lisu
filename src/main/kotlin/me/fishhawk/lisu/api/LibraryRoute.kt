@@ -9,10 +9,14 @@ import io.ktor.server.locations.put
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import me.fishhawk.lisu.api.model.MangaDto
+import me.fishhawk.lisu.api.model.MangaKeyDto
+import me.fishhawk.lisu.api.model.MangaState
 import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
-import me.fishhawk.lisu.model.*
+import me.fishhawk.lisu.library.model.MangaMetadata
 import me.fishhawk.lisu.source.SourceManager
+import me.fishhawk.lisu.util.Image
 
 @OptIn(KtorExperimentalLocationsAPI::class)
 private object LibraryLocation {
@@ -56,15 +60,29 @@ fun Route.libraryRoutes(
     fun MangaDto.updateMangaState() =
         copy(state = if (sourceManager.hasSource(providerId)) MangaState.RemoteInLibrary else MangaState.Local)
 
+    fun getMangaState(providerId: String) =
+        if (sourceManager.hasSource(providerId)) MangaState.RemoteInLibrary
+        else MangaState.Local
+
     get<LibraryLocation.Search> { loc ->
-        val mangaList = libraryManager.search(loc.page, loc.keywords)
-            .map { it.updateMangaState() }
+        val mangaList = libraryManager.search(loc.page, loc.keywords).map { (libraryId, manga) ->
+            MangaDto(
+                state = getMangaState(libraryId),
+                providerId = libraryId,
+                manga = manga,
+            )
+        }
         call.respond(mangaList)
     }
 
     get<LibraryLocation.RandomManga> {
-        val manga = libraryManager.getRandomManga().get()
-            .updateMangaState()
+        val manga = libraryManager.getRandomManga().let { (libraryId, manga) ->
+            MangaDto(
+                state = getMangaState(libraryId),
+                providerId = libraryId,
+                manga = manga,
+            )
+        }
         call.respond(manga)
     }
 
@@ -125,7 +143,7 @@ fun Route.libraryRoutes(
     }
 
     put<LibraryLocation.Metadata> { loc ->
-        val metadata = call.receive<MangaMetadataDto>()
+        val metadata = call.receive<MangaMetadata>()
         val manga = libraryManager.getLibrary(loc.providerId)
             ?.getManga(loc.mangaId)
             ?: throw HttpException.NotFound("manga")

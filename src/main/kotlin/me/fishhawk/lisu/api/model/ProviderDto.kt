@@ -1,10 +1,12 @@
-package me.fishhawk.lisu.model
+package me.fishhawk.lisu.api.model
 
 import kotlinx.serialization.Serializable
 import me.fishhawk.lisu.library.Library
-import me.fishhawk.lisu.source.BoardId
-import me.fishhawk.lisu.source.BoardModel
+import me.fishhawk.lisu.source.model.BoardId
+import me.fishhawk.lisu.source.model.BoardModel
 import me.fishhawk.lisu.source.Source
+
+const val LocalProviderId = "local"
 
 @Serializable
 data class ProviderDto(
@@ -30,8 +32,11 @@ data class ProviderDto(
         fun fromLibrary(library: Library): ProviderDto {
             return ProviderDto(
                 id = library.id,
-                lang = Library.lang,
-                boardModels = Library.boardModel
+                lang = LocalProviderId,
+                boardModels = mapOf(
+                    BoardId.Search to BoardModel(),
+                    BoardId.Main to BoardModel(),
+                ),
             )
         }
     }

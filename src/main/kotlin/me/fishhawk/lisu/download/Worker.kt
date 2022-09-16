@@ -1,11 +1,12 @@
 package me.fishhawk.lisu.download
 
 import kotlinx.coroutines.*
-import me.fishhawk.lisu.library.Chapter
+import me.fishhawk.lisu.library.ChapterAccessor
 import me.fishhawk.lisu.library.LibraryManager
-import me.fishhawk.lisu.library.Manga
-import me.fishhawk.lisu.model.MangaDetailDto
-import me.fishhawk.lisu.model.toMetadataDetail
+import me.fishhawk.lisu.library.MangaAccessor
+import me.fishhawk.lisu.library.model.MangaContent
+import me.fishhawk.lisu.library.model.MangaDetail
+import me.fishhawk.lisu.library.model.MangaMetadata
 import me.fishhawk.lisu.source.Source
 import me.fishhawk.lisu.util.forEachIndexedParallel
 import me.fishhawk.lisu.util.retry
@@ -134,7 +135,7 @@ class Worker(
                 libraryManager.getLibrary(source.id)?.getManga(mangaId)?.let { manga ->
                     source.getManga(mangaId).onSuccess { detail ->
                         if (!manga.hasMetadata()) {
-                            manga.setMetadata(detail.toMetadataDetail())
+                            manga.setMetadata(MangaMetadata.fromMangaDetail(detail))
                         }
                         if (!manga.hasCover()) {
                             detail.cover
@@ -157,20 +158,22 @@ class Worker(
     }
 }
 
-private suspend fun download(source: Source, manga: Manga): Boolean {
+private suspend fun download(source: Source, mangaAccessor: MangaAccessor): Boolean {
     var hasChapterError = false
-    source.getManga(manga.id)
+    source.getManga(mangaAccessor.id)
         .onSuccess { detail ->
-            if (!manga.hasMetadata()) {
-                manga.setMetadata(detail.toMetadataDetail())
+            if (!mangaAccessor.hasMetadata()) {
+                mangaAccessor.setMetadata(
+                    MangaMetadata.fromMangaDetail(detail)
+                )
             }
-            if (!manga.hasCover()) {
+            if (!mangaAccessor.hasCover()) {
                 detail.cover
                     ?.let { source.getImage(it) }
                     ?.getOrNull()
-                    ?.let { manga.setCover(it) }
+                    ?.let { mangaAccessor.setCover(it) }
             }
-            hasChapterError = downloadChapters(source, manga, detail)
+            hasChapterError = downloadChapters(source, mangaAccessor, detail)
         }
         .onFailure { hasChapterError = true }
     return hasChapterError
@@ -178,26 +181,31 @@ private suspend fun download(source: Source, manga: Manga): Boolean {
 
 private suspend fun downloadChapters(
     source: Source,
-    manga: Manga,
-    detailDto: MangaDetailDto
+    mangaAccessor: MangaAccessor,
+    detail: MangaDetail,
 ): Boolean {
     var hasChapterError = false
 
     val downloadInds =
-        detailDto.collections?.flatMap { (collectionId, chapters) -> chapters.map { Pair(collectionId, it.id) } }
-            ?: detailDto.chapters?.map { Pair("", it.id) }
-            ?: detailDto.preview?.let { listOf(Pair("", "")) }
+        when (val content = detail.content) {
+            is MangaContent.Collections ->
+                content.collections.flatMap { (collectionId, chapters) -> chapters.map { Pair(collectionId, it.id) } }
+            is MangaContent.Chapters ->
+                content.chapters.map { Pair("", it.id) }
+            is MangaContent.SingleChapter ->
+                listOf(Pair("", ""))
+        }
 
     downloadInds
-        ?.mapNotNull { (collectionId, chapterId) ->
-            val chapter = manga.getChapter(collectionId, chapterId)
-                ?: manga.createChapter(collectionId, chapterId).getOrNull()
+        .mapNotNull { (collectionId, chapterId) ->
+            val chapter = mangaAccessor.getChapter(collectionId, chapterId)
+                ?: mangaAccessor.createChapter(collectionId, chapterId).getOrNull()
             if (chapter == null) hasChapterError = true
             chapter
         }
-        ?.filter { !it.isFinished() }
-        ?.map { chapter ->
-            if (!downloadImages(source, manga, chapter)) {
+        .filter { !it.isFinished() }
+        .map { chapter ->
+            if (!downloadImages(source, mangaAccessor, chapter)) {
                 chapter.setFinished()
             } else {
                 hasChapterError = true
@@ -208,17 +216,17 @@ private suspend fun downloadChapters(
 
 private suspend fun downloadImages(
     source: Source,
-    manga: Manga,
-    chapter: Chapter,
+    mangaAccessor: MangaAccessor,
+    chapterAccessor: ChapterAccessor,
 ): Boolean {
     var hasImageError = false
-    source.getContent(manga.id, chapter.id)
+    source.getContent(mangaAccessor.id, chapterAccessor.id)
         .onSuccess { images ->
-            val existingImages = chapter.getContent() ?: emptyList()
+            val existingImages = chapterAccessor.getContent() ?: emptyList()
             images.filterIndexed { index, _ -> existingImages.contains(index.toString()) }
                 .forEachIndexedParallel(5) { index, url ->
                     retry(3) { source.getImage(url) }
-                        .then { chapter.setImage(index.toString(), it) }
+                        .then { chapterAccessor.setImage(index.toString(), it) }
                         .onFailure { hasImageError = true }
                 }
         }

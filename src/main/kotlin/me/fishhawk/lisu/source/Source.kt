@@ -7,42 +7,12 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import me.fishhawk.lisu.model.Image
-import me.fishhawk.lisu.model.CommentDto
-import me.fishhawk.lisu.model.MangaDetailDto
-import me.fishhawk.lisu.model.MangaDto
+import me.fishhawk.lisu.library.model.Manga
+import me.fishhawk.lisu.library.model.MangaDetail
+import me.fishhawk.lisu.source.model.*
+import me.fishhawk.lisu.util.Image
 import me.fishhawk.lisu.util.runCatchingException
-
-enum class BoardId { Main, Rank, Search }
-
-@Serializable
-sealed interface FilterModel {
-    @Serializable
-    @SerialName("Text")
-    object Text : FilterModel
-
-    @Serializable
-    @SerialName("Switch")
-    data class Switch(val default: Boolean = false) : FilterModel
-
-    @Serializable
-    @SerialName("Select")
-    data class Select(val options: List<String>) : FilterModel
-
-    @Serializable
-    @SerialName("MultipleSelect")
-    data class MultipleSelect(val options: List<String>) : FilterModel
-}
-
-@Serializable
-data class BoardModel(
-    val hasSearchBar: Boolean = false,
-    val base: Map<String, FilterModel> = emptyMap(),
-    val advance: Map<String, FilterModel> = emptyMap(),
-)
 
 abstract class Source {
     abstract val id: String
@@ -54,11 +24,11 @@ abstract class Source {
 
     open val commentFeature: CommentFeature? = null
 
-    protected abstract suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto>
+    protected abstract suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<Manga>
     suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters) =
         runCatchingException { getBoardImpl(boardId = boardId, page = page, filters = filters) }
 
-    protected abstract suspend fun getMangaImpl(mangaId: String): MangaDetailDto
+    protected abstract suspend fun getMangaImpl(mangaId: String): MangaDetail
     suspend fun getManga(mangaId: String) =
         runCatchingException { getMangaImpl(mangaId = mangaId) }
 
@@ -89,7 +59,7 @@ abstract class Source {
     }
 
     abstract class CommentFeature {
-        abstract suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto>
+        abstract suspend fun getCommentImpl(mangaId: String, page: Int): List<Comment>
         suspend fun getComment(mangaId: String, page: Int) =
             runCatchingException { getCommentImpl(mangaId = mangaId, page = page) }
     }

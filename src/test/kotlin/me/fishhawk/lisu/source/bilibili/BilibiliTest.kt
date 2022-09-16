@@ -7,7 +7,7 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
 import io.ktor.http.*
-import me.fishhawk.lisu.source.BoardId
+import me.fishhawk.lisu.source.model.BoardId
 import me.fishhawk.lisu.source.saveTestImage
 
 class BilibiliTest : DescribeSpec({

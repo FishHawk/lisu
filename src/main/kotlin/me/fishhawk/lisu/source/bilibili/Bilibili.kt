@@ -7,8 +7,13 @@ import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
-import me.fishhawk.lisu.model.*
+import me.fishhawk.lisu.library.model.Chapter
+import me.fishhawk.lisu.library.model.Manga
+import me.fishhawk.lisu.library.model.MangaContent
+import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.source.*
+import me.fishhawk.lisu.source.model.*
+import me.fishhawk.lisu.util.Image
 
 class Bilibili : Source() {
     override val id: String = "哔哩哔哩漫画"
@@ -51,16 +56,16 @@ class Bilibili : Source() {
     }
 
     override val commentFeature = object : CommentFeature() {
-        override suspend fun getCommentImpl(mangaId: String, page: Int): List<CommentDto> {
+        override suspend fun getCommentImpl(mangaId: String, page: Int): List<Comment> {
             return api.getReply(mangaId, page = page + 1, sort = 2)
                 .body<JsonObject>()
                 .let { it["data"]!!.jsonObject }
                 .let { obj ->
-                    fun parseComment(reply: JsonObject): CommentDto {
-                        return CommentDto(
+                    fun parseComment(reply: JsonObject): Comment {
+                        return Comment(
                             username = reply["member"]!!.jsonObject["uname"]!!.jsonPrimitive.content,
                             content = reply["content"]!!.jsonObject["message"]!!.jsonPrimitive.content,
-                            createTime = reply["ctime"]!!.jsonPrimitive.long,
+                            createTime = reply["ctime"]!!.jsonPrimitive.long.asTimestamp(),
                             vote = reply["like"]!!.jsonPrimitive.int,
                             subComments = reply["replies"]!!.jsonArrayOrNull?.obj?.map { parseComment(it) },
                         )
@@ -75,7 +80,7 @@ class Bilibili : Source() {
         }
     }
 
-    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<MangaDto> {
+    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<Manga> {
         return when (boardId) {
             BoardId.Main ->
                 api.getClassPage(
@@ -88,12 +93,11 @@ class Bilibili : Source() {
                 ).body<JsonObject>()
                     .let { it["data"]!!.jsonArray.obj }
                     .map { obj ->
-                        MangaDto(
-                            providerId = id,
+                        Manga(
                             id = obj["season_id"]!!.jsonPrimitive.content,
                             cover = obj["vertical_cover"]?.jsonPrimitive?.content,
                             title = obj["title"]?.jsonPrimitive?.content,
-                            isFinished = obj["is_finish"]?.asMangaIsFinish()
+                            isFinished = obj["is_finish"]?.asMangaIsFinish(),
                         )
                     }
             BoardId.Rank ->
@@ -102,8 +106,7 @@ class Bilibili : Source() {
                     .body<JsonObject>()
                     .let { it["data"]!!.jsonArray.obj }
                     .map { obj ->
-                        MangaDto(
-                            providerId = id,
+                        Manga(
                             id = obj["comic_id"]!!.jsonPrimitive.content,
                             cover = obj["vertical_cover"]?.jsonPrimitive?.content,
                             title = obj["title"]?.jsonPrimitive?.content,
@@ -114,11 +117,9 @@ class Bilibili : Source() {
             BoardId.Search -> {
                 api.search(page, filters.keywords()).body<JsonObject>().let { json ->
                     json["data"]!!.jsonObject["list"]!!.jsonArray.map { it.jsonObject }.map { obj ->
-                        MangaDto(
-                            providerId = id,
+                        Manga(
                             id = obj["id"]!!.jsonPrimitive.content,
                             cover = obj["vertical_cover"]?.jsonPrimitive?.content,
-                            updateTime = null,
                             title = obj["org_title"]?.jsonPrimitive?.content,
                             authors = obj["author_name"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList(),
                             isFinished = obj["is_finish"]?.asMangaIsFinish()
@@ -132,7 +133,7 @@ class Bilibili : Source() {
 //            ).body<JsonObject>()
 //                .let { it["data"]!!.jsonObject["list"]!!.jsonArray.obj }
 //                .map { obj ->
-//                    MangaDto(
+//                    Manga(
 //                        providerId = id,
 //                        id = obj["comic_id"]!!.jsonPrimitive.content,
 //                        cover = obj["vertical_cover"]?.jsonPrimitive?.content,
@@ -142,31 +143,33 @@ class Bilibili : Source() {
         }
     }
 
-    override suspend fun getMangaImpl(mangaId: String): MangaDetailDto {
+    override suspend fun getMangaImpl(mangaId: String): MangaDetail {
         return api.getComicDetail(mangaId)
             .body<JsonObject>()
             .let { it["data"]!!.jsonObject }
             .let { obj ->
-                MangaDetailDto(
-                    providerId = id,
+                MangaDetail(
                     id = obj["id"]!!.jsonPrimitive.content,
-                    cover = obj["vertical_cover"]!!.jsonPrimitive.content,
 
+                    cover = obj["vertical_cover"]!!.jsonPrimitive.content,
                     title = obj["title"]!!.jsonPrimitive.content,
                     authors = obj["author_name"]!!.jsonArray.string,
                     isFinished = obj["is_finish"]!!.asMangaIsFinish(),
-                    description = obj["evaluate"]!!.jsonPrimitive.content,
-                    tags = mapOf(DefaultTagName to obj["styles"]!!.jsonArray.string),
 
-                    chapters = obj["ep_list"]!!.jsonArray.obj.map {
-                        ChapterDto(
-                            id = it["id"]!!.jsonPrimitive.content,
-                            name = it["short_title"]!!.jsonPrimitive.content,
-                            title = it["title"]!!.jsonPrimitive.content,
-                            isLocked = it["is_locked"]?.jsonPrimitive?.boolean,
-                            updateTime = it["pub_time"]?.jsonPrimitive?.content?.asDateTimeToEpochSecond("yyyy-MM-dd HH:mm:ss")
-                        )
-                    }.reversed()
+                    description = obj["evaluate"]!!.jsonPrimitive.content,
+                    tags = mapOf("" to obj["styles"]!!.jsonArray.string),
+
+                    content = MangaContent.Chapters(
+                        chapters = obj["ep_list"]!!.jsonArray.obj.map {
+                            Chapter(
+                                id = it["id"]!!.jsonPrimitive.content,
+                                name = it["short_title"]!!.jsonPrimitive.content,
+                                title = it["title"]!!.jsonPrimitive.content,
+                                isLocked = it["is_locked"]?.jsonPrimitive?.boolean ?: false,
+                                updateTime = it["pub_time"]?.jsonPrimitive?.content?.asDateTime("yyyy-MM-dd HH:mm:ss")
+                            )
+                        }.reversed()
+                    ),
                 )
             }
     }
