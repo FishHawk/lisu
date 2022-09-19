@@ -9,7 +9,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import me.fishhawk.lisu.library.model.Chapter
 import me.fishhawk.lisu.library.model.Manga
-import me.fishhawk.lisu.library.model.MangaContent
 import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.source.*
 import me.fishhawk.lisu.source.model.*
@@ -91,23 +90,21 @@ class Manhuaren : Source() {
                     else mapOf("" to it.split(' '))
                 },
 
-                content = MangaContent.Collections(
-                    collections = mapOf(
-                        "连载" to obj["mangaWords"],
-                        "单行本" to obj["mangaRolls"],
-                        "番外" to obj["mangaEpisode"],
-                    ).mapValues { arr ->
-                        arr.value!!.jsonArray.map {
-                            Chapter(
-                                id = it.jsonObject["sectionId"]!!.jsonPrimitive.content,
-                                name = it.jsonObject["sectionName"]!!.jsonPrimitive.content,
-                                title = it.jsonObject["sectionTitle"]!!.jsonPrimitive.content,
-                                isLocked = it.jsonObject["isMustPay"]?.jsonPrimitive?.int == 1,
-                                updateTime = it.jsonObject["releaseTime"]?.jsonPrimitive?.content?.asDate("yyyy-MM-dd")
-                            )
-                        }.reversed()
-                    }.filterValues { it.isNotEmpty() }
-                )
+                collections = mapOf(
+                    "连载" to obj["mangaWords"],
+                    "单行本" to obj["mangaRolls"],
+                    "番外" to obj["mangaEpisode"],
+                ).mapValues { arr ->
+                    arr.value!!.jsonArray.map {
+                        Chapter(
+                            id = it.jsonObject["sectionId"]!!.jsonPrimitive.content,
+                            name = it.jsonObject["sectionName"]!!.jsonPrimitive.content,
+                            title = it.jsonObject["sectionTitle"]!!.jsonPrimitive.content,
+                            isLocked = it.jsonObject["isMustPay"]?.jsonPrimitive?.int == 1,
+                            updateTime = it.jsonObject["releaseTime"]?.jsonPrimitive?.content?.asDate("yyyy-MM-dd")
+                        )
+                    }.reversed()
+                }.filterValues { it.isNotEmpty() }
             )
         }
     }

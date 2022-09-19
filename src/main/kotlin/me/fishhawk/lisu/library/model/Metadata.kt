@@ -26,12 +26,14 @@ data class MangaMetadata(
                 isFinished = detail.isFinished,
                 description = detail.description,
                 tags = detail.tags,
-                collections = (detail.content as? MangaContent.Collections)?.let { content ->
-                    content.collections.mapValues { mapChapters(it.value) }
-                },
-                chapters = (detail.content as? MangaContent.Chapters)?.let { content ->
-                    mapChapters(content.chapters)
-                },
+                collections = null,
+                chapters = null,
+//                collections = (detail.content as? MangaContent.Collections)?.let { content ->
+//                    content.collections.mapValues { mapChapters(it.value) }
+//                },
+//                chapters = (detail.content as? MangaContent.Chapters)?.let { content ->
+//                    mapChapters(content.chapters)
+//                },
             )
         }
     }

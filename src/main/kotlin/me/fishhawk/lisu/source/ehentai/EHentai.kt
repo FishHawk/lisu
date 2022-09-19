@@ -9,8 +9,8 @@ import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
+import me.fishhawk.lisu.library.model.Chapter
 import me.fishhawk.lisu.library.model.Manga
-import me.fishhawk.lisu.library.model.MangaContent
 import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.source.*
 import me.fishhawk.lisu.source.model.*
@@ -155,9 +155,8 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
                     }.toString().removeSuffix("\n").ifBlank { null },
                     tags = metadata.tags.filterKeys { it != TagKeyArtist },
 
-                    content = MangaContent.SingleChapter(
-                        preview = doc.parseImageUrls(),
-                    ),
+                    collections = mapOf("" to listOf(Chapter(""))),
+                    chapterPreviews = doc.parseImageUrls(),
                 )
             }
     }

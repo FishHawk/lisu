@@ -4,7 +4,6 @@ import kotlinx.coroutines.*
 import me.fishhawk.lisu.library.ChapterAccessor
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.library.MangaAccessor
-import me.fishhawk.lisu.library.model.MangaContent
 import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.library.model.MangaMetadata
 import me.fishhawk.lisu.source.Source
@@ -187,14 +186,7 @@ private suspend fun downloadChapters(
     var hasChapterError = false
 
     val downloadInds =
-        when (val content = detail.content) {
-            is MangaContent.Collections ->
-                content.collections.flatMap { (collectionId, chapters) -> chapters.map { Pair(collectionId, it.id) } }
-            is MangaContent.Chapters ->
-                content.chapters.map { Pair("", it.id) }
-            is MangaContent.SingleChapter ->
-                listOf(Pair("", ""))
-        }
+        detail.collections.flatMap { (collectionId, chapters) -> chapters.map { Pair(collectionId, it.id) } }
 
     downloadInds
         .mapNotNull { (collectionId, chapterId) ->

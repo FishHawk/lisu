@@ -1,6 +1,5 @@
 package me.fishhawk.lisu.library.model
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.fishhawk.lisu.util.LocalDateTimeSerializer
 import java.time.LocalDateTime
@@ -27,23 +26,9 @@ data class MangaDetail(
     val description: String? = null,
     val tags: Map<String, List<String>> = emptyMap(),
 
-    val content: MangaContent,
+    val collections: Map<String, List<Chapter>> = emptyMap(),
+    val chapterPreviews: List<String>? = null,
 )
-
-@Serializable
-sealed interface MangaContent {
-    @Serializable
-    @SerialName("Collections")
-    data class Collections(val collections: Map<String, List<Chapter>> = emptyMap()) : MangaContent
-
-    @Serializable
-    @SerialName("Chapters")
-    data class Chapters(val chapters: List<Chapter> = emptyList()) : MangaContent
-
-    @Serializable
-    @SerialName("SingleChapter")
-    data class SingleChapter(var preview: List<String> = emptyList()) : MangaContent
-}
 
 @Serializable
 data class Chapter(

@@ -9,7 +9,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import me.fishhawk.lisu.library.model.Chapter
 import me.fishhawk.lisu.library.model.Manga
-import me.fishhawk.lisu.library.model.MangaContent
 import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.source.*
 import me.fishhawk.lisu.source.model.*
@@ -159,8 +158,8 @@ class Bilibili : Source() {
                     description = obj["evaluate"]!!.jsonPrimitive.content,
                     tags = mapOf("" to obj["styles"]!!.jsonArray.string),
 
-                    content = MangaContent.Chapters(
-                        chapters = obj["ep_list"]!!.jsonArray.obj.map {
+                    collections = mapOf(
+                        "" to obj["ep_list"]!!.jsonArray.obj.map {
                             Chapter(
                                 id = it["id"]!!.jsonPrimitive.content,
                                 name = it["short_title"]!!.jsonPrimitive.content,

@@ -1,8 +1,8 @@
 package me.fishhawk.lisu.api.model
 
 import kotlinx.serialization.Serializable
+import me.fishhawk.lisu.library.model.Chapter
 import me.fishhawk.lisu.library.model.Manga
-import me.fishhawk.lisu.library.model.MangaContent
 import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.util.LocalDateTimeSerializer
 import java.time.LocalDateTime
@@ -64,7 +64,8 @@ data class MangaDetailDto(
     val description: String? = null,
     val tags: Map<String, List<String>> = emptyMap(),
 
-    val content: MangaContent,
+    val collections: Map<String, List<Chapter>> = emptyMap(),
+    val chapterPreviews: List<String>? = null,
 ) {
     constructor(
         state: MangaState,
@@ -81,6 +82,7 @@ data class MangaDetailDto(
         isFinished = manga.isFinished,
         description = manga.description,
         tags = manga.tags,
-        content = manga.content,
+        collections = manga.collections,
+        chapterPreviews = manga.chapterPreviews,
     )
 }

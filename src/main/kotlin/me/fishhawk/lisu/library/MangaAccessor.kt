@@ -59,11 +59,11 @@ class MangaAccessor(val path: Path) {
                     description = it?.description,
                     tags = it?.tags ?: emptyMap(),
 
-                    content = when {
-                        collections != null -> MangaContent.Collections(collections)
-                        chapters != null -> MangaContent.Chapters(chapters)
-                        else -> MangaContent.SingleChapter(previews ?: emptyList())
-                    },
+                    collections = collections
+                        ?: chapters?.let { mapOf("" to it) }
+                        ?: previews?.let { mapOf("" to listOf(Chapter(""))) }
+                        ?: emptyMap(),
+                    chapterPreviews = previews,
                 )
             }
     }
