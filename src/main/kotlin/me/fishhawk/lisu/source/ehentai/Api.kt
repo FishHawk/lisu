@@ -48,11 +48,10 @@ class Api(
                 )
             )
         }
-        return true
-//        val status = client.get(baseUrl).status
-//        val isSuccess = status == HttpStatusCode.OK
-//        if (!isSuccess) logout()
-//        return isSuccess
+        val status = client.get(baseUrl).status
+        val isSuccess = status == HttpStatusCode.OK
+        if (!isSuccess) logout()
+        return isSuccess
     }
 
     suspend fun latest(

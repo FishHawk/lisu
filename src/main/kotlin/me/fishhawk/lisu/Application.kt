@@ -1,6 +1,5 @@
 package me.fishhawk.lisu
 
-import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -8,9 +7,7 @@ import io.ktor.server.locations.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.callloging.*
 import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
-import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import kotlinx.cli.ArgParser
@@ -18,7 +15,10 @@ import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import kotlinx.cli.optional
 import kotlinx.serialization.json.Json
-import me.fishhawk.lisu.api.*
+import me.fishhawk.lisu.api.downloadRoutes
+import me.fishhawk.lisu.api.libraryRoutes
+import me.fishhawk.lisu.api.providerRoutes
+import me.fishhawk.lisu.api.systemRoutes
 import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.source.SourceManager

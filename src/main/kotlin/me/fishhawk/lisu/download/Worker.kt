@@ -91,8 +91,8 @@ class Worker(
         remoteMangaDetail.collections.forEach { (collectionId, chapters) ->
             chapters
                 .filter { !it.isLocked }
-                .filter {
-                    localMangaAccessor.getChapter(collectionId, it.id).fold(
+                .filter { chapter ->
+                    localMangaAccessor.getChapter(collectionId, chapter.id).fold(
                         onSuccess = { !it.isFinished() },
                         onFailure = { true },
                     )

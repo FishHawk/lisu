@@ -41,7 +41,7 @@ class Filter(
             val isExclusionMode = token.startsWith('-')
             if (isExclusionMode) token = token.substring(1)
 
-            val isExactMode = token.endsWith('$');
+            val isExactMode = token.endsWith('$')
             if (isExactMode) token = token.substring(0, token.length - 1)
 
             val splitPosition = token.indexOf(':')

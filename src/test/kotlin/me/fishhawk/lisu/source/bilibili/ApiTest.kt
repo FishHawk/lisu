@@ -4,13 +4,10 @@ import io.kotest.assertions.ktor.client.shouldHaveStatus
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
-import io.ktor.client.call.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import me.fishhawk.lisu.source.Source
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import kotlin.time.ExperimentalTime
 
 class ApiTest : DescribeSpec({
     describe("Source test: bilibili api") {
