@@ -16,7 +16,7 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.5")
 
-    val ktorVersion = "2.1.0"
+    val ktorVersion = "2.1.2"
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -26,23 +26,24 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
     implementation("io.ktor:ktor-server-status-pages:$ktorVersion")
+    implementation("io.ktor:ktor-server-websockets:$ktorVersion")
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
 
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-java:$ktorVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
 
-    implementation("org.codehaus.janino:janino:3.1.7")
-    implementation("ch.qos.logback:logback-classic:1.2.11")
+    implementation("org.codehaus.janino:janino:3.1.8")
+    implementation("ch.qos.logback:logback-classic:1.4.3")
 
     implementation("se.sawano.java:alphanumeric-comparator:1.4.1")
 
     implementation("com.tfowl.ktor:ktor-jsoup:2.0.0")
 
-    val krontabVersion = "0.8.0"
+    val krontabVersion = "0.8.1"
     implementation("dev.inmo:krontab:$krontabVersion")
 
-    val kotestVersion = "5.4.2"
+    val kotestVersion = "5.5.0"
     testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-ktor:4.4.3")

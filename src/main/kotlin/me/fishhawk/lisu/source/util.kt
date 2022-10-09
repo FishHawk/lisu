@@ -4,13 +4,12 @@ import kotlinx.serialization.json.*
 import me.fishhawk.lisu.util.Image
 import me.fishhawk.lisu.util.createDirAll
 import me.fishhawk.lisu.util.outputStream
-import me.fishhawk.lisu.util.then
+import me.fishhawk.lisu.util.andThen
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.*
 import kotlin.io.path.Path
 
 internal fun Long.asTimestamp() =
@@ -42,6 +41,6 @@ internal val JsonArray.obj: List<JsonObject>
 
 internal fun Source.saveTestImage(image: Image) {
     Path("test-image").createDirAll()
-        .then { it.resolve("$id.png").outputStream() }
+        .andThen { it.resolve("$id.png").outputStream() }
         .onSuccess { image.stream.copyTo(it) }
 }

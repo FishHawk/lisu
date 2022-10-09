@@ -13,13 +13,6 @@ import java.time.ZoneOffset
 import java.util.*
 import kotlin.io.path.*
 
-class IllegalChildPathException(dir: String, other: String) :
-    FileSystemException(dir, other, "illegal child path") {
-//    companion object {
-//        private const val serialVersionUID = 3056667871802779003L
-//    }
-}
-
 fun Any?.discard() = Unit
 
 val Path.name: String
@@ -40,55 +33,50 @@ fun Path.isDirectory(vararg options: LinkOption): Boolean = Files.isDirectory(th
 private val imageExtensions = listOf("bmp", "jpeg", "jpg", "png", "gif", "webp")
 fun Path.isImageFile() = isRegularFile() && extension.lowercase() in imageExtensions
 
-fun Path.resolveChild(other: String) =
-    if (
-        other == "" ||
-        other == "." ||
-        other == ".." ||
-        other.contains(File.separator)
-    ) {
-        Result.failure(IllegalChildPathException(this.toString(), other))
-    } else {
-        Result.success(resolve(other))
-    }
+fun String.isFilename(): Boolean =
+    isNotBlank() &&
+            this != "" &&
+            this != "." &&
+            this != ".." &&
+            !this.contains(File.separator)
 
 fun Path.list(filter: (Path) -> Boolean) =
-    runCatchingException { listDirectoryEntries().filter(filter) }
+    safeRunCatching { listDirectoryEntries().filter(filter) }
 
 fun Path.listFiles() = list { it.isRegularFile() }
 fun Path.listDirectory() = list { it.isDirectory() }
 fun Path.listImageFiles() = list { it.isImageFile() }
 
 fun Path.createFile(vararg attributes: FileAttribute<*>) =
-    runCatchingException { Files.createFile(this, *attributes) }
+    safeRunCatching { Files.createFile(this, *attributes) }
 
 fun Path.createDir(vararg attributes: FileAttribute<*>) =
-    runCatchingException { Files.createDirectory(this, *attributes) }
+    safeRunCatching { Files.createDirectory(this, *attributes) }
 
 fun Path.createDirAll(vararg attributes: FileAttribute<*>) =
-    runCatchingException { Files.createDirectories(this, *attributes) }
+    safeRunCatching { Files.createDirectories(this, *attributes) }
 
 fun Path.delete() =
-    runCatchingException { Files.delete(this) }
+    safeRunCatching { Files.delete(this) }
 
 fun Path.deleteDirAll() =
-    runCatchingException {
+    safeRunCatching {
         Files.walk(this)
             .sorted(Comparator.reverseOrder())
             .forEach { it.deleteExisting() }
     }
 
 fun Path.inputStream(vararg options: OpenOption) =
-    runCatchingException { Files.newInputStream(this, *options) }
+    safeRunCatching { Files.newInputStream(this, *options) }
 
 fun Path.outputStream(vararg options: OpenOption) =
-    runCatchingException { Files.newOutputStream(this, *options) }
+    safeRunCatching { Files.newOutputStream(this, *options) }
 
 fun Path.readText(charset: Charset = Charsets.UTF_8) =
-    runCatchingException { reader(charset).use { it.readText() } }
+    safeRunCatching { reader(charset).use { it.readText() } }
 
 fun Path.writeText(text: CharSequence, charset: Charset = Charsets.UTF_8, vararg options: OpenOption) =
-    runCatchingException {
+    safeRunCatching {
         Files.newOutputStream(this, *options)
             .writer(charset)
             .use { it.append(text) }
@@ -96,7 +84,7 @@ fun Path.writeText(text: CharSequence, charset: Charset = Charsets.UTF_8, vararg
     }
 
 fun Path.setDosHidden() =
-    runCatchingException {
+    safeRunCatching {
         setAttribute(
             "dos:hidden",
             true,
@@ -105,7 +93,7 @@ fun Path.setDosHidden() =
     }
 
 fun Path.setFileDescription(title: String) =
-    runCatchingException {
+    safeRunCatching {
         setAttribute(
             "user:Doc.Title",
             ByteBuffer.wrap(title.toByteArray()),
@@ -114,7 +102,7 @@ fun Path.setFileDescription(title: String) =
     }
 
 fun Path.setUserXorgComment(comment: String) =
-    runCatchingException {
+    safeRunCatching {
         setAttribute(
             "user:xdg.comment",
             ByteBuffer.wrap(comment.toByteArray()),

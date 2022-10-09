@@ -28,24 +28,40 @@ class Library(private val path: Path) {
     }
 
     private fun getMangaPath(id: String): Result<Path> {
-        return path.resolveChild(id)
+        return if (id.isFilename()) {
+            Result.success(path.resolve(id))
+        } else {
+            Result.failure(LibraryException.MangaIllegalId(id))
+        }
+    }
+
+    fun getManga(id: String): Result<MangaAccessor> {
+        return getMangaPath(id)
+            .andThen { path ->
+                if (path.isDirectory()) {
+                    Result.success(MangaAccessor(path))
+                } else {
+                    Result.failure(LibraryException.MangaNotFound(id))
+                }
+            }
     }
 
     fun createManga(id: String): Result<MangaAccessor> {
         return getMangaPath(id)
-            .then(Path::createDirAll)
-            .map { MangaAccessor(it) }
+            .andThen { path ->
+                if (path.isDirectory()) {
+                    Result.success(MangaAccessor(path))
+                } else {
+                    path.createDirAll().fold(
+                        onSuccess = { Result.success(MangaAccessor(path)) },
+                        onFailure = { Result.failure(LibraryException.MangaCanNotCreate(id, it)) },
+                    )
+                }
+            }
     }
 
     fun deleteManga(id: String): Result<Unit> {
         return getMangaPath(id)
-            .then(Path::deleteDirAll)
-    }
-
-    fun getManga(id: String): MangaAccessor? {
-        return getMangaPath(id)
-            .getOrNull()
-            ?.takeIf { it.isDirectory() }
-            ?.let { MangaAccessor(it) }
+            .andThen(Path::deleteDirAll)
     }
 }

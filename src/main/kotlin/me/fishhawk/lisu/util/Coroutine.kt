@@ -3,15 +3,15 @@ package me.fishhawk.lisu.util
 import kotlinx.coroutines.*
 import kotlinx.coroutines.selects.select
 
-suspend inline fun <T, C : Iterable<T>> C.forEachIndexedParallel(
+suspend inline fun <T, C : Iterable<T>> C.forEachParallel(
     limit: Int,
-    crossinline action: suspend (index: Int, T) -> Unit
+    crossinline action: suspend (T) -> Unit
 ) = coroutineScope {
     val executing = mutableListOf<Deferred<Unit>>()
-    forEachIndexed { index, value ->
-        executing.add(async { action(index, value) })
+    forEach { value ->
+        executing.add(async { action(value) })
         if (executing.size >= limit)
-            select<Unit> { executing.onEach { it.onJoin { } } }
+            select { executing.onEach { it.onJoin { } } }
         executing.removeIf { it.isCompleted }
     }
     executing.awaitAll()

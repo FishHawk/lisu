@@ -3,10 +3,11 @@ package me.fishhawk.lisu.source.manhuaren
 import io.kotest.assertions.ktor.client.shouldHaveStatus
 import io.kotest.core.spec.style.DescribeSpec
 import io.ktor.http.*
+import me.fishhawk.lisu.source.Source
 
 class ApiTest : DescribeSpec({
     describe("Source test: manhuaren api") {
-        val api = Api()
+        val api = Api(Source.client)
 
         it("#getSearchManga") {
             api.getSearchManga(0, "龙珠超").shouldHaveStatus(HttpStatusCode.OK)

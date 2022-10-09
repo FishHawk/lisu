@@ -2,6 +2,8 @@ package me.fishhawk.lisu.source
 
 import com.tfowl.ktor.client.features.JsoupPlugin
 import io.ktor.client.*
+import io.ktor.client.engine.*
+import io.ktor.client.engine.ProxyBuilder.http
 import io.ktor.client.engine.java.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
@@ -12,7 +14,7 @@ import me.fishhawk.lisu.library.model.Manga
 import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.source.model.*
 import me.fishhawk.lisu.util.Image
-import me.fishhawk.lisu.util.runCatchingException
+import me.fishhawk.lisu.util.safeRunCatching
 
 abstract class Source {
     abstract val id: String
@@ -26,19 +28,19 @@ abstract class Source {
 
     protected abstract suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<Manga>
     suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters) =
-        runCatchingException { getBoardImpl(boardId = boardId, page = page, filters = filters) }
+        safeRunCatching { getBoardImpl(boardId = boardId, page = page, filters = filters) }
 
     protected abstract suspend fun getMangaImpl(mangaId: String): MangaDetail
     suspend fun getManga(mangaId: String) =
-        runCatchingException { getMangaImpl(mangaId = mangaId) }
+        safeRunCatching { getMangaImpl(mangaId = mangaId) }
 
     protected abstract suspend fun getContentImpl(mangaId: String, chapterId: String): List<String>
     suspend fun getContent(mangaId: String, chapterId: String) =
-        runCatchingException { getContentImpl(mangaId = mangaId, chapterId = chapterId) }
+        safeRunCatching { getContentImpl(mangaId = mangaId, chapterId = chapterId) }
 
     protected abstract suspend fun getImageImpl(url: String): Image
     suspend fun getImage(url: String) =
-        runCatchingException { getImageImpl(url = url) }
+        safeRunCatching { getImageImpl(url = url) }
 
     abstract class LoginFeature {
         abstract suspend fun isLogged(): Boolean
@@ -61,7 +63,7 @@ abstract class Source {
     abstract class CommentFeature {
         abstract suspend fun getCommentImpl(mangaId: String, page: Int): List<Comment>
         suspend fun getComment(mangaId: String, page: Int) =
-            runCatchingException { getCommentImpl(mangaId = mangaId, page = page) }
+            safeRunCatching { getCommentImpl(mangaId = mangaId, page = page) }
     }
 
     protected fun Parameters.string(name: String) = get(name) ?: ""

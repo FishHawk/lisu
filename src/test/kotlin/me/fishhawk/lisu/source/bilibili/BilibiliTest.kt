@@ -58,7 +58,7 @@ class BilibiliTest : DescribeSpec({
         xit("#login feature") {
             val secret = ""
             source.loginFeature.isLogged().shouldBeFalse()
-            source.loginFeature.login(mapOf("SESSDATA" to secret)).shouldBeTrue()
+            source.loginFeature.cookiesLogin!!.login(mapOf("SESSDATA" to secret)).shouldBeTrue()
             source.loginFeature.isLogged().shouldBeTrue()
             source.loginFeature.logout()
             source.loginFeature.isLogged().shouldBeFalse()

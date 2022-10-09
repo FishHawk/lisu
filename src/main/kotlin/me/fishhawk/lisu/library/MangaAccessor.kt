@@ -77,13 +77,13 @@ class MangaAccessor(val path: Path) {
 
     private fun <T> parseMetadataAs(serializer: KSerializer<T>): T? {
         return metadataPath.readText()
-            .mapCatchingException { json.decodeFromString(serializer, it) }
+            .andThen { safeRunCatching { json.decodeFromString(serializer, it) } }
             .getOrNull()
     }
 
     fun setMetadata(metadata: MangaMetadata): Result<Unit> {
-        return runCatchingException { json.encodeToString(MangaMetadata.serializer(), metadata) }
-            .then(metadataPath::writeText)
+        return safeRunCatching { json.encodeToString(MangaMetadata.serializer(), metadata) }
+            .andThen(metadataPath::writeText)
     }
 
     fun hasCover(): Boolean {
@@ -116,30 +116,50 @@ class MangaAccessor(val path: Path) {
         collectionId: String,
         chapterId: String
     ): Result<Pair<Path, ChapterAccessor.Depth>> {
-        return if (collectionId.isNotEmpty()) {
-            path.resolveChild(collectionId)
-                .then { it.resolveChild(chapterId) }
-                .map { Pair(it, ChapterAccessor.Depth.Two) }
-        } else if (chapterId.isNotEmpty()) {
-            path.resolveChild(chapterId)
-                .map { Pair(it, ChapterAccessor.Depth.One) }
+        return if (collectionId.isNotBlank()) {
+            if (collectionId.isFilename() && chapterId.isFilename()) {
+                Result.success(Pair(path.resolve(collectionId).resolve(chapterId), ChapterAccessor.Depth.Two))
+            } else {
+                Result.failure(LibraryException.ChapterIllegalId(collectionId, chapterId))
+            }
+        } else if (chapterId.isNotBlank()) {
+            if (chapterId.isFilename()) {
+                Result.success(Pair(path.resolve(chapterId), ChapterAccessor.Depth.One))
+            } else {
+                Result.failure(LibraryException.ChapterIllegalId(collectionId, chapterId))
+            }
         } else {
-            Result.success(path)
-                .map { Pair(it, ChapterAccessor.Depth.Zero) }
+            Result.success(Pair(path, ChapterAccessor.Depth.Zero))
         }
     }
 
-    fun getChapter(collectionId: String, chapterId: String): ChapterAccessor? {
+    fun getChapter(collectionId: String, chapterId: String): Result<ChapterAccessor> {
         return getChapterPath(collectionId, chapterId)
-            .getOrNull()
-            ?.takeIf { it.first.isDirectory() }
-            ?.let { ChapterAccessor(it.first, it.second) }
+            .andThen { (path, depth) ->
+                if (path.isDirectory()) {
+                    Result.success(ChapterAccessor(path, depth))
+                } else {
+                    Result.failure(LibraryException.ChapterNotFound(collectionId, chapterId))
+                }
+            }
     }
 
     fun createChapter(collectionId: String, chapterId: String): Result<ChapterAccessor> {
         return getChapterPath(collectionId, chapterId)
-            .onSuccess { it.first.createDirAll() }
-            .map { ChapterAccessor(it.first, it.second) }
+            .andThen { (path, depth) ->
+                if (path.isDirectory()) {
+                    Result.success(ChapterAccessor(path, depth))
+                } else {
+                    path.createDirAll().fold(
+                        onSuccess = { Result.success(ChapterAccessor(path, depth)) },
+                        onFailure = {
+                            Result.failure(
+                                LibraryException.ChapterCanNotCreate(collectionId, chapterId, it)
+                            )
+                        },
+                    ).onSuccess { it.setUnfinished() }
+                }
+            }
     }
 }
 

@@ -6,13 +6,13 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.locations.*
 import io.ktor.server.netty.*
-import io.ktor.server.plugins.*
 import io.ktor.server.plugins.callloging.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.websocket.*
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
@@ -47,10 +47,6 @@ fun main(args: Array<String>) {
         path = Path(libraryPath),
     )
     val sourceManager = SourceManager()
-    val providerManager = ProviderManager(
-        libraryManager = libraryManager,
-        sourceManager = sourceManager,
-    )
     val downloader = Downloader(
         libraryManager = libraryManager,
         sourceManager = sourceManager,
@@ -66,17 +62,7 @@ fun main(args: Array<String>) {
             })
         }
 
-        install(StatusPages) {
-            exception<NotFoundException> { call, cause ->
-                call.respondText(cause.localizedMessage, status = HttpStatusCode.NotFound)
-            }
-            exception<Throwable> { call, cause ->
-                call.respondText(cause.localizedMessage, status = HttpStatusCode.InternalServerError)
-            }
-            exception<HttpException> { call, cause ->
-                call.respondText(cause.localizedMessage, status = cause.status)
-            }
-        }
+        install(WebSockets)
 
         install(CallLogging) {
             format { call ->
@@ -88,8 +74,16 @@ fun main(args: Array<String>) {
         }
 
         routing {
-            libraryRoutes(libraryManager, sourceManager, downloader)
-            providerRoutes(providerManager)
+            libraryRoutes(
+                libraryManager = libraryManager,
+                sourceManager = sourceManager,
+                downloader = downloader,
+            )
+            providerRoutes(
+                libraryManager = libraryManager,
+                sourceManager = sourceManager,
+            )
+            downloadRoutes(downloader)
             systemRoutes()
         }
     }.start(wait = true)

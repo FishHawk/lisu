@@ -34,17 +34,36 @@ class LibraryManager(private val path: Path) {
             .random()
             .let { (libraryId, manga) -> libraryId to manga.get() }
 
-    private fun getLibraryPath(id: String) =
-        path.resolveChild(id)
+    private fun getLibraryPath(id: String): Result<Path> {
+        return if (id.isFilename()) {
+            Result.success(path.resolve(id))
+        } else {
+            Result.failure(LibraryException.LibraryIllegalId(id))
+        }
+    }
 
-    fun getLibrary(id: String) =
-        getLibraryPath(id)
-            .getOrNull()
-            ?.takeIf { it.isDirectory() }
-            ?.let { Library(it) }
+    fun getLibrary(id: String): Result<Library> {
+        return getLibraryPath(id)
+            .andThen { path ->
+                if (path.isDirectory()) {
+                    Result.success(Library(path))
+                } else {
+                    Result.failure(LibraryException.LibraryNotFound(id))
+                }
+            }
+    }
 
-    fun createLibrary(id: String) =
-        getLibraryPath(id)
-            .then(Path::createDir)
-            .map { Library(it) }
+    fun createLibrary(id: String): Result<Library> {
+        return getLibraryPath(id)
+            .andThen { path ->
+                if (path.isDirectory()) {
+                    Result.success(Library(path))
+                } else {
+                    path.createDirAll().fold(
+                        onSuccess = { Result.success(Library(path)) },
+                        onFailure = { Result.failure(LibraryException.LibraryCanNotCreate(id, it)) },
+                    )
+                }
+            }
+    }
 }

@@ -13,7 +13,7 @@ class ChapterAccessor(
         get() = if (depth == Depth.Zero) "" else path.name
 
     private val unfinishedFile
-        get() = path.resolve(".unfinished")
+        get() = path.resolve("unfinished")
 
     fun isFinished(): Boolean {
         return !unfinishedFile.exists()
@@ -22,7 +22,6 @@ class ChapterAccessor(
     fun setUnfinished(): Result<Unit> {
         return unfinishedFile
             .createFile()
-            .then(Path::setDosHidden)
             .map { it.discard() }
     }
 
@@ -46,8 +45,8 @@ class ChapterAccessor(
     }
 
     fun setImage(name: String, image: Image): Result<Unit> {
-        return path.resolveChild("$name.${image.ext}")
-            .then(Path::outputStream)
+        return path.resolve("$name.${image.ext}")
+            .outputStream()
             .map { image.stream.copyTo(it).discard() }
     }
 }

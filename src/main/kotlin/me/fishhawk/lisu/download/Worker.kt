@@ -1,227 +1,262 @@
 package me.fishhawk.lisu.download
 
 import kotlinx.coroutines.*
+import me.fishhawk.lisu.download.model.ChapterDownloadTask
+import me.fishhawk.lisu.download.model.MangaDownloadTask
 import me.fishhawk.lisu.library.ChapterAccessor
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.library.MangaAccessor
-import me.fishhawk.lisu.library.model.MangaDetail
 import me.fishhawk.lisu.library.model.MangaMetadata
 import me.fishhawk.lisu.source.Source
-import me.fishhawk.lisu.util.forEachIndexedParallel
+import me.fishhawk.lisu.util.andThen
+import me.fishhawk.lisu.util.forEachParallel
 import me.fishhawk.lisu.util.retry
-import me.fishhawk.lisu.util.then
 import org.slf4j.LoggerFactory
+import java.util.concurrent.atomic.AtomicInteger
 
 private val log = LoggerFactory.getLogger("downloader")
 
 class Worker(
     private val libraryManager: LibraryManager,
     private val source: Source,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val tasks: MutableList<MangaDownloadTask>,
+    private val notifyTasksChanged: () -> Unit,
 ) {
     val id
         get() = source.id
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val context = Dispatchers.IO.limitedParallelism(1)
+    private var downloadJob: Job = Job().apply { cancel() }
+    private var mangaJob: Job? = null
+    private var chapterJob: Job? = null
 
-    private var job: Job = scope.launch { }.apply { cancel() }
+    private var currentMangaTask: MangaDownloadTask? = null
+    private var currentChapterTask: ChapterDownloadTask? = null
 
-    private val waiting = mutableSetOf<String>()
-    private val paused = mutableSetOf<String>()
-
-    private fun isDownloading(mangaId: String) =
-        mangaId == waiting.firstOrNull()
-
-    private fun launchJob() {
-        if (job.isActive) return
-        job = scope.launch(context) {
-            while (true) {
-                val mangaId = waiting.firstOrNull() ?: break
-                log.info("Downloading manga $id/$mangaId.")
-
-                val manga = libraryManager.getLibrary(source.id)?.getManga(mangaId)
-                if (manga == null) {
-                    log.info("Manga $id/$mangaId not in library anymore.")
-                    waiting.remove(mangaId)
-                    continue
-                }
-
-                try {
-                    val hasChapterError = withContext(Dispatchers.IO) {
-                        download(source, manga)
-                    }
-                    if (hasChapterError) {
-                        log.info("Download error for $id/$mangaId")
-                        paused.add(mangaId)
-                    }
-                } catch (throwable: Throwable) {
-                    paused.add(mangaId)
-                    log.info("Unexpected download error: ${source.id} $mangaId $throwable")
-                } finally {
-                    log.info("Download finish: ${source.id} $mangaId")
-                    waiting.remove(mangaId)
-                }
-            }
+    fun start() {
+        if (!downloadJob.isActive) {
+            downloadJob = scope.launch { download() }
         }
     }
 
-    private fun cancelJob() {
-        if (job.isActive) job.cancel()
+    suspend fun cancel() {
+        if (downloadJob.isActive) {
+            downloadJob.cancelAndJoin()
+        }
     }
 
-    private fun restartJob() {
-        cancelJob()
-        launchJob()
+    suspend fun cancelMangaTask(mangaId: String) {
+        if (
+            mangaJob?.isActive == true &&
+            id == currentMangaTask?.providerId &&
+            mangaId == currentMangaTask?.mangaId
+        ) {
+            mangaJob?.cancelAndJoin()
+        }
     }
 
-    suspend fun updateLibrary() = withContext(context) {
-        libraryManager
-            .getLibrary(source.id)
-            ?.listMangas()
-            ?.filter { it.get().isFinished != true }
-            ?.map { it.id }
-            ?.toSet()
+    suspend fun cancelChapterTask(
+        mangaId: String,
+        collectionId: String,
+        chapterId: String,
+    ) {
+        if (
+            mangaJob?.isActive == true &&
+            id == currentMangaTask?.providerId &&
+            mangaId == currentMangaTask?.mangaId &&
+            chapterJob?.isActive == true &&
+            collectionId == currentChapterTask?.collectionId &&
+            chapterId == currentChapterTask?.chapterId
+        ) {
+            chapterJob?.cancelAndJoin()
+        }
+    }
+
+    suspend fun createMangaDownloadTask(mangaId: String): MangaDownloadTask? {
+        val remoteMangaDetail = source.getManga(mangaId).getOrThrow()
+        val localMangaAccessor = libraryManager.createLibrary(id)
+            .andThen { it.createManga(mangaId) }
+            .getOrThrow()
+        if (!localMangaAccessor.hasMetadata()) {
+            localMangaAccessor.setMetadata(MangaMetadata.fromMangaDetail(remoteMangaDetail))
+        }
+        if (!localMangaAccessor.hasCover()) {
+            remoteMangaDetail.cover
+                ?.let { source.getImage(it) }
+                ?.getOrNull()
+                ?.let { localMangaAccessor.setCover(it) }
+        }
+
+        val chapterTasks = mutableListOf<ChapterDownloadTask>()
+        remoteMangaDetail.collections.forEach { (collectionId, chapters) ->
+            chapters
+                .filter { !it.isLocked }
+                .filter {
+                    localMangaAccessor.getChapter(collectionId, it.id).fold(
+                        onSuccess = { !it.isFinished() },
+                        onFailure = { true },
+                    )
+                }
+                .forEach {
+                    chapterTasks.add(
+                        ChapterDownloadTask(
+                            collectionId = collectionId,
+                            chapterId = it.id,
+                            name = it.name,
+                            title = it.title,
+                        )
+                    )
+                }
+        }
+
+        return chapterTasks
+            .takeIf { it.isNotEmpty() }
             ?.let {
-                paused.removeAll(it)
-                waiting.addAll(it)
-            }
-        launchJob()
-    }
-
-    suspend fun start(mangaId: String) {
-        if (paused.contains(mangaId)) {
-            withContext(context) {
-                paused.remove(mangaId)
-                waiting.add(mangaId)
-                launchJob()
-            }
-        }
-    }
-
-    suspend fun startAll() {
-        withContext(context) {
-            waiting.addAll(paused)
-            paused.clear()
-            launchJob()
-        }
-    }
-
-    suspend fun pause(mangaId: String) {
-        if (waiting.contains(mangaId)) {
-            withContext(context) {
-                val needRestart = isDownloading(mangaId)
-                waiting.remove(mangaId)
-                paused.add(mangaId)
-                if (needRestart) restartJob()
-            }
-        }
-    }
-
-    suspend fun pauseAll() {
-        withContext(context) {
-            paused.addAll(waiting)
-            waiting.clear()
-            cancelJob()
-        }
-    }
-
-    suspend fun add(mangaId: String) = withContext(context) {
-        if (!paused.contains(mangaId) && !waiting.contains(mangaId)) {
-            waiting.add(mangaId)
-            if (mangaId != waiting.firstOrNull()) {
-                // Prepare before download
-                libraryManager.getLibrary(source.id)?.getManga(mangaId)?.let { manga ->
-                    source.getManga(mangaId).onSuccess { detail ->
-                        if (!manga.hasMetadata()) {
-                            manga.setMetadata(MangaMetadata.fromMangaDetail(detail))
-                        }
-                        if (!manga.hasCover()) {
-                            detail.cover
-                                ?.let { source.getImage(it) }
-                                ?.getOrNull()
-                                ?.let { manga.setCover(it) }
-                        }
-                    }
-                }
-            }
-            launchJob()
-        }
-    }
-
-    suspend fun remove(mangaId: String) = withContext(context) {
-        val needRestart = isDownloading(mangaId)
-        waiting.remove(mangaId)
-        paused.remove(mangaId)
-        if (needRestart) restartJob()
-    }
-}
-
-private suspend fun download(source: Source, mangaAccessor: MangaAccessor): Boolean {
-    var hasChapterError = false
-    source.getManga(mangaAccessor.id)
-        .onSuccess { detail ->
-            if (!mangaAccessor.hasMetadata()) {
-                mangaAccessor.setMetadata(
-                    MangaMetadata.fromMangaDetail(detail)
+                MangaDownloadTask(
+                    providerId = id,
+                    mangaId = mangaId,
+                    cover = remoteMangaDetail.cover,
+                    title = remoteMangaDetail.title,
+                    chapterTasks = it,
                 )
             }
-            if (!mangaAccessor.hasCover()) {
-                detail.cover
-                    ?.let { source.getImage(it) }
-                    ?.getOrNull()
-                    ?.let { mangaAccessor.setCover(it) }
-            }
-            hasChapterError = downloadChapters(source, mangaAccessor, detail)
-        }
-        .onFailure { hasChapterError = true }
-    return hasChapterError
-}
+    }
 
-private suspend fun downloadChapters(
-    source: Source,
-    mangaAccessor: MangaAccessor,
-    detail: MangaDetail,
-): Boolean {
-    var hasChapterError = false
-
-    val downloadInds =
-        detail.collections.flatMap { (collectionId, chapters) -> chapters.map { Pair(collectionId, it.id) } }
-
-    downloadInds
-        .mapNotNull { (collectionId, chapterId) ->
-            val chapter = mangaAccessor.getChapter(collectionId, chapterId)
-                ?: mangaAccessor.createChapter(collectionId, chapterId).getOrNull()
-            if (chapter == null) hasChapterError = true
-            chapter
-        }
-        .filter { !it.isFinished() }
-        .map { chapter ->
-            if (!downloadImages(source, mangaAccessor, chapter)) {
-                chapter.setFinished()
-            } else {
-                hasChapterError = true
-            }
-        }
-    return hasChapterError
-}
-
-private suspend fun downloadImages(
-    source: Source,
-    mangaAccessor: MangaAccessor,
-    chapterAccessor: ChapterAccessor,
-): Boolean {
-    var hasImageError = false
-    source.getContent(mangaAccessor.id, chapterAccessor.id)
-        .onSuccess { images ->
-            val existingImages = chapterAccessor.getContent() ?: emptyList()
-            images.filterIndexed { index, _ -> existingImages.contains(index.toString()) }
-                .forEachIndexedParallel(5) { index, url ->
-                    retry(3) { source.getImage(url) }
-                        .then { chapterAccessor.setImage(index.toString(), it) }
-                        .onFailure { hasImageError = true }
+    private suspend fun download() {
+        while (true) {
+            val mangaTask = tasks
+                .firstOrNull { task ->
+                    task.providerId == id && task.chapterTasks.any { it.state is ChapterDownloadTask.State.Waiting }
                 }
+                ?: break
+
+            log.info("Downloading manga ${mangaTask.providerId}/${mangaTask.mangaId}.")
+
+            scope.launch {
+                libraryManager
+                    .getLibrary(mangaTask.providerId)
+                    .andThen { it.getManga(mangaTask.mangaId) }
+                    .onSuccess { mangaAccessor ->
+                        try {
+                            currentMangaTask = mangaTask
+                            downloadManga(mangaAccessor, mangaTask)
+                        } finally {
+                            currentMangaTask = null
+                        }
+                        if (mangaTask.chapterTasks.isEmpty()) {
+                            val removed = tasks.removeIf { mangaTask == it }
+                            if (removed) notifyTasksChanged()
+                        }
+                    }
+                    .onFailure {
+                        log.info("Manga ${mangaTask.providerId}/${mangaTask.mangaId} not in library anymore.")
+                        val removed = tasks.removeIf { mangaTask == it }
+                        if (removed) notifyTasksChanged()
+                    }
+            }.let {
+                mangaJob = it
+                it.join()
+            }
         }
-        .onFailure { hasImageError = true }
-    return hasImageError
+    }
+
+    private suspend fun downloadManga(
+        mangaAccessor: MangaAccessor,
+        mangaTask: MangaDownloadTask,
+    ) {
+        while (true) {
+            val chapterTask = mangaTask.chapterTasks
+                .firstOrNull { it.state == ChapterDownloadTask.State.Waiting }
+                ?: break
+
+            scope.launch {
+                mangaAccessor
+                    .createChapter(chapterTask.collectionId, chapterTask.chapterId)
+                    .onFailure {
+                        chapterTask.state = ChapterDownloadTask.State.Failed(
+                            downloadedPageNumber = null,
+                            totalPageNumber = null,
+                            errorMessage = it.message ?: "can not create chapter folder",
+                        )
+                    }
+                    .onSuccess { chapterAccessor ->
+                        try {
+                            currentChapterTask = chapterTask
+                            downloadChapter(
+                                mangaId = mangaAccessor.id,
+                                chapterAccessor = chapterAccessor,
+                                chapterTask = chapterTask
+                            )
+                            (chapterTask.state as? ChapterDownloadTask.State.Downloading)?.let { state ->
+                                if (
+                                    state.downloadedPageNumber != null &&
+                                    state.totalPageNumber != null &&
+                                    state.downloadedPageNumber == state.totalPageNumber
+                                ) {
+                                    chapterAccessor.setFinished()
+                                    mangaTask.chapterTasks.removeIf { chapterTask === it }
+                                    notifyTasksChanged()
+                                } else {
+                                    chapterTask.state = ChapterDownloadTask.State.Failed(
+                                        downloadedPageNumber = state.downloadedPageNumber,
+                                        totalPageNumber = state.totalPageNumber,
+                                        errorMessage = "Error when downloading images.",
+                                    )
+                                    notifyTasksChanged()
+                                }
+                            }
+                        } finally {
+                            currentChapterTask = null
+                        }
+                    }
+            }.let {
+                chapterJob = it
+                it.join()
+            }
+        }
+    }
+
+    private suspend fun downloadChapter(
+        mangaId: String,
+        chapterAccessor: ChapterAccessor,
+        chapterTask: ChapterDownloadTask,
+    ) {
+        chapterTask.state = ChapterDownloadTask.State.Downloading(
+            downloadedPageNumber = null,
+            totalPageNumber = null,
+        )
+        notifyTasksChanged()
+        source.getContent(mangaId, chapterAccessor.id)
+            .onSuccess { images ->
+                val existingImages = chapterAccessor.getContent() ?: emptyList()
+                val unDownloadedImages = images.withIndex().filter { !existingImages.contains(it.index.toString()) }
+                val downloadedPageNumber = AtomicInteger(images.size - unDownloadedImages.size)
+
+                chapterTask.state = ChapterDownloadTask.State.Downloading(
+                    downloadedPageNumber = downloadedPageNumber.get(),
+                    totalPageNumber = images.size,
+                )
+                notifyTasksChanged()
+                unDownloadedImages
+                    .forEachParallel(3) { indexedUrl ->
+                        retry(2) { source.getImage(indexedUrl.value) }
+                            .andThen { chapterAccessor.setImage(indexedUrl.index.toString(), it) }
+                            .onSuccess {
+                                chapterTask.state = ChapterDownloadTask.State.Downloading(
+                                    downloadedPageNumber = downloadedPageNumber.incrementAndGet(),
+                                    totalPageNumber = images.size,
+                                )
+                                notifyTasksChanged()
+                            }
+                    }
+
+            }
+            .onFailure {
+                chapterTask.state = ChapterDownloadTask.State.Failed(
+                    downloadedPageNumber = null,
+                    totalPageNumber = null,
+                    errorMessage = "Error when get chapter content.",
+                )
+            }
+    }
 }
