@@ -29,10 +29,11 @@ class LibraryManager(private val path: Path) {
             .toList()
     }
 
-    fun getRandomManga() =
-        listMangas()
-            .random()
-            .let { (libraryId, manga) -> libraryId to manga.get() }
+    fun getRandomManga(): Pair<String, Manga>? {
+        return listMangas()
+            .randomOrNull()
+            ?.let { (libraryId, manga) -> libraryId to manga.get() }
+    }
 
     private fun getLibraryPath(id: String): Result<Path> {
         return if (id.isFilename()) {
@@ -59,10 +60,7 @@ class LibraryManager(private val path: Path) {
                 if (path.isDirectory()) {
                     Result.success(Library(path))
                 } else {
-                    path.createDirAll().fold(
-                        onSuccess = { Result.success(Library(path)) },
-                        onFailure = { Result.failure(LibraryException.LibraryCanNotCreate(id, it)) },
-                    )
+                    path.createDirAll().map { Library(path) }
                 }
             }
     }

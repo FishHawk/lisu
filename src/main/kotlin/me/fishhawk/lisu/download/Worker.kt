@@ -6,15 +6,14 @@ import me.fishhawk.lisu.download.model.MangaDownloadTask
 import me.fishhawk.lisu.library.ChapterAccessor
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.library.MangaAccessor
+import me.fishhawk.lisu.library.model.MangaChapterMetadata
 import me.fishhawk.lisu.library.model.MangaMetadata
 import me.fishhawk.lisu.source.Source
 import me.fishhawk.lisu.util.andThen
 import me.fishhawk.lisu.util.forEachParallel
 import me.fishhawk.lisu.util.retry
-import org.slf4j.LoggerFactory
+import me.fishhawk.lisu.util.safeRunCatching
 import java.util.concurrent.atomic.AtomicInteger
-
-private val log = LoggerFactory.getLogger("downloader")
 
 class Worker(
     private val libraryManager: LibraryManager,
@@ -72,54 +71,59 @@ class Worker(
         }
     }
 
-    suspend fun createMangaDownloadTask(mangaId: String): MangaDownloadTask? {
-        val remoteMangaDetail = source.getManga(mangaId).getOrThrow()
-        val localMangaAccessor = libraryManager.createLibrary(id)
-            .andThen { it.createManga(mangaId) }
-            .getOrThrow()
-        if (!localMangaAccessor.hasMetadata()) {
-            localMangaAccessor.setMetadata(MangaMetadata.fromMangaDetail(remoteMangaDetail))
-        }
-        if (!localMangaAccessor.hasCover()) {
-            remoteMangaDetail.cover
-                ?.let { source.getImage(it) }
-                ?.getOrNull()
-                ?.let { localMangaAccessor.setCover(it) }
-        }
+    suspend fun createMangaDownloadTask(mangaId: String): Result<MangaDownloadTask?> {
+        return safeRunCatching {
+            val remoteMangaDetail = source.getManga(mangaId).getOrThrow()
+            val localMangaAccessor = libraryManager.createLibrary(id)
+                .andThen { it.createManga(mangaId) }
+                .getOrThrow()
 
-        val chapterTasks = mutableListOf<ChapterDownloadTask>()
-        remoteMangaDetail.collections.forEach { (collectionId, chapters) ->
-            chapters
-                .filter { !it.isLocked }
-                .filter { chapter ->
-                    localMangaAccessor.getChapter(collectionId, chapter.id).fold(
-                        onSuccess = { !it.isFinished() },
-                        onFailure = { true },
-                    )
-                }
-                .forEach {
-                    chapterTasks.add(
-                        ChapterDownloadTask(
-                            collectionId = collectionId,
-                            chapterId = it.id,
-                            name = it.name,
-                            title = it.title,
-                        )
-                    )
-                }
-        }
-
-        return chapterTasks
-            .takeIf { it.isNotEmpty() }
-            ?.let {
-                MangaDownloadTask(
-                    providerId = id,
-                    mangaId = mangaId,
-                    cover = remoteMangaDetail.cover,
-                    title = remoteMangaDetail.title,
-                    chapterTasks = it,
-                )
+            if (!localMangaAccessor.hasMetadata()) {
+                localMangaAccessor.setMetadata(MangaMetadata.fromMangaDetail(remoteMangaDetail))
             }
+            if (!localMangaAccessor.hasCover()) {
+                remoteMangaDetail.cover
+                    ?.let { source.getImage(it) }
+                    ?.getOrNull()
+                    ?.let { localMangaAccessor.setCover(it) }
+            }
+            // TODO: Incremental updates to avoid remote corruption
+            localMangaAccessor.setChapterMetadata(MangaChapterMetadata.fromMangaDetail(remoteMangaDetail))
+
+            val chapterTasks = mutableListOf<ChapterDownloadTask>()
+            remoteMangaDetail.collections.forEach { (collectionId, chapters) ->
+                chapters
+                    .filter { !it.isLocked }
+                    .filter { chapter ->
+                        localMangaAccessor.getChapter(collectionId, chapter.id).fold(
+                            onSuccess = { !it.isFinished() },
+                            onFailure = { true },
+                        )
+                    }
+                    .forEach {
+                        chapterTasks.add(
+                            ChapterDownloadTask(
+                                collectionId = collectionId,
+                                chapterId = it.id,
+                                name = it.name,
+                                title = it.title,
+                            )
+                        )
+                    }
+            }
+
+            chapterTasks
+                .takeIf { it.isNotEmpty() }
+                ?.let {
+                    MangaDownloadTask(
+                        providerId = id,
+                        mangaId = mangaId,
+                        cover = remoteMangaDetail.cover,
+                        title = remoteMangaDetail.title,
+                        chapterTasks = it,
+                    )
+                }
+        }
     }
 
     private suspend fun download() {

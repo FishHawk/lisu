@@ -67,14 +67,15 @@ fun Route.libraryRoutes(
         get<LibraryLocation.RandomManga> {
             libraryManager
                 .getRandomManga()
-                .let { (libraryId, manga) ->
+                ?.let { (libraryId, manga) ->
                     MangaDto(
                         state = getMangaState(libraryId),
                         providerId = libraryId,
                         manga = manga,
                     )
                 }
-                .let { call.respond(it) }
+                ?.let { call.respond(it) }
+                ?: call.respondText(text = "No manga found.", status = HttpStatusCode.NotFound)
         }
 
         post<LibraryLocation.Manga> { loc ->
@@ -82,10 +83,13 @@ fun Route.libraryRoutes(
                 .createLibrary(loc.providerId)
                 .andThen { it.createManga(loc.mangaId) }
                 .onSuccess {
-                    call.respondText("Success")
-                    downloader.add(loc.providerId, loc.mangaId)
+                    call.respondText(
+                        status = HttpStatusCode.NoContent,
+                        text = "Success.",
+                    )
+                    downloader.addMangaTask(loc.providerId, loc.mangaId)
                 }
-                .onFailure { onLocalProviderFailure(it) }
+                .onFailure { processFailure(it) }
         }
 
         delete<LibraryLocation.Manga> { loc ->
@@ -93,43 +97,66 @@ fun Route.libraryRoutes(
                 .getLibrary(loc.providerId)
                 .andThen { it.deleteManga(loc.mangaId) }
                 .onSuccess {
-                    call.respondText("Success")
+                    call.respondText(
+                        status = HttpStatusCode.NoContent,
+                        text = "Success.",
+                    )
                     downloader.cancelMangaTask(loc.providerId, loc.mangaId)
                 }
-                .onFailure {
-                    call.respondText(status = HttpStatusCode.NotFound, text = "manga")
-                }
+                .onFailure { processFailure(it) }
         }
 
         put<LibraryLocation.Cover> { loc ->
-            call.receiveMultipart().forEachPart { part ->
-                if (part is PartData.FileItem && part.name == "cover") {
-                    libraryManager.getLibrary(loc.providerId).getOrNull()
-                        ?.getManga(loc.mangaId)?.getOrNull()
-                        ?.setCover(Image(part.contentType, part.streamProvider()))
+            val image = call
+                .receiveMultipart()
+                .readAllParts()
+                .filterIsInstance<PartData.FileItem>()
+                .firstOrNull { it.name == "cover" }
+                ?.let { Image(it.contentType, it.streamProvider()) }
+                ?: return@put call.respondText(
+                    text = "No image file.",
+                    status = HttpStatusCode.BadRequest,
+                )
+
+            libraryManager.getLibrary(loc.providerId)
+                .andThen { it.getManga(loc.mangaId) }
+                .andThen { it.setCover(image) }
+                .onSuccess {
+                    call.respondText(
+                        status = HttpStatusCode.NoContent,
+                        text = "Success.",
+                    )
                 }
-            }
-            call.response.status(HttpStatusCode.NoContent)
+                .onFailure { processFailure(it) }
         }
 
         put<LibraryLocation.Metadata> { loc ->
             val metadata = call.receive<MangaMetadata>()
-            val manga = libraryManager.getLibrary(loc.providerId).getOrNull()
-                ?.getManga(loc.mangaId)?.getOrNull()
-                ?: return@put
-            manga.setMetadata(metadata)
-            call.response.status(HttpStatusCode.NoContent)
+            libraryManager.getLibrary(loc.providerId)
+                .andThen { it.getManga(loc.mangaId) }
+                .andThen { it.setMetadata(metadata) }
+                .onSuccess {
+                    call.respondText(
+                        status = HttpStatusCode.NoContent,
+                        text = "Success.",
+                    )
+                }
+                .onFailure { processFailure(it) }
         }
 
         post<LibraryLocation.MangaDelete> {
             val mangaKeys = call.receive<List<MangaKeyDto>>()
-            val isFail = mangaKeys.map {
+            val failedKeys = mangaKeys.filter { key ->
                 libraryManager
-                    .getLibrary(it.providerId).getOrNull()
-                    ?.deleteManga(it.id)
-            }.any { it == null || it.isFailure }
-            if (isFail) call.response.status(HttpStatusCode.OK)
-            else call.response.status(HttpStatusCode.InternalServerError)
+                    .getLibrary(key.providerId)
+                    .andThen { it.deleteManga(key.id) }
+                    .isFailure
+            }
+            if (failedKeys.isEmpty()) call.respondText(status = HttpStatusCode.NoContent, text = "Success.")
+            else call.respondText(
+                status = HttpStatusCode.InternalServerError,
+                text = "${failedKeys.size} manga fail to delete.",
+            )
         }
     }
 }

@@ -45,23 +45,27 @@ private object ProviderLocation {
     data class Manga(val providerId: String, val mangaId: String)
 
     @Location("/{providerId}/manga/{mangaId}/cover")
-    data class Cover(val providerId: String, val mangaId: String, val imageId: String)
+    data class Cover(
+        val providerId: String,
+        val mangaId: String,
+        val imageId: String,
+    )
 
-    @Location("/{providerId}/manga/{mangaId}/content/{collectionId}/{chapterId}")
+    @Location("/{providerId}/manga/{mangaId}/content")
     data class Content(
         val providerId: String,
         val mangaId: String,
         val collectionId: String,
-        val chapterId: String
+        val chapterId: String,
     )
 
-    @Location("/{providerId}/manga/{mangaId}/image/{collectionId}/{chapterId}/{imageId}")
+    @Location("/{providerId}/manga/{mangaId}/image")
     data class Image(
         val providerId: String,
         val mangaId: String,
         val collectionId: String,
         val chapterId: String,
-        val imageId: String
+        val imageId: String,
     )
 }
 
@@ -111,6 +115,7 @@ fun Route.providerRoutes(
                     ContentType.Image.Any.contentType -> {
                         CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600))
                     }
+
                     else -> null
                 }
             }
@@ -191,7 +196,7 @@ fun Route.providerRoutes(
                         .getBoard(loc.boardId, loc.page, call.request.queryParameters)
                         .map { list -> list.map { it.toDto() } }
                         .onSuccess { call.respond(it) }
-                        .onFailure { onRemoteProviderFailure(it) }
+                        .onFailure { processFailure(it) }
                 }
         }
 
@@ -201,13 +206,13 @@ fun Route.providerRoutes(
                     .getManga(loc.mangaId)
                     .map { it.getDetail().toDto() }
                     .onSuccess { call.respond(it) }
-                    .onFailure { onLocalProviderFailure(it) }
+                    .onFailure { processFailure(it) }
             }?.onRemote {
                 source
                     .getManga(loc.mangaId)
                     .map { it.toDto() }
                     .onSuccess { call.respond(it) }
-                    .onFailure { onRemoteProviderFailure(it) }
+                    .onFailure { processFailure(it) }
             }
         }
 
@@ -223,7 +228,7 @@ fun Route.providerRoutes(
                         )
                         else call.respondImage(it)
                     }
-                    .onFailure { onLocalProviderFailure(it) }
+                    .onFailure { processFailure(it) }
             }?.onRemote {
                 // Using Cache
                 library
@@ -233,7 +238,7 @@ fun Route.providerRoutes(
                     ?.let { return@onRemote call.respondImage(it) }
                 source.getImage(loc.imageId)
                     .onSuccess { call.respondImage(it) }
-                    .onFailure { onRemoteProviderFailure(it) }
+                    .onFailure { processFailure(it) }
             }
         }
 
@@ -250,7 +255,7 @@ fun Route.providerRoutes(
                         )
                         else call.respond(it)
                     }
-                    .onFailure { onLocalProviderFailure(it) }
+                    .onFailure { processFailure(it) }
             }?.onRemote {
                 // Using Cache
                 library
@@ -261,7 +266,7 @@ fun Route.providerRoutes(
                     ?.let { return@onRemote call.respond(it) }
                 source.getContent(loc.mangaId, loc.chapterId)
                     .onSuccess { call.respond(it) }
-                    .onFailure { onRemoteProviderFailure(it) }
+                    .onFailure { processFailure(it) }
             }
         }
 
@@ -278,7 +283,7 @@ fun Route.providerRoutes(
                         )
                         else call.respondImage(it)
                     }
-                    .onFailure { onLocalProviderFailure(it) }
+                    .onFailure { processFailure(it) }
             }?.onRemote {
                 // Using Cache
                 library
@@ -289,38 +294,34 @@ fun Route.providerRoutes(
                     ?.let { return@onRemote call.respondImage(it) }
                 source.getImage(loc.imageId)
                     .onSuccess { call.respondImage(it) }
-                    .onFailure { onRemoteProviderFailure(it) }
+                    .onFailure { processFailure(it) }
             }
         }
     }
 }
 
-internal suspend fun PipelineContext<Unit, ApplicationCall>.onLocalProviderFailure(exception: Throwable) {
-    if (exception !is LibraryException) {
-        call.respondText(text = "Unknown error.", status = HttpStatusCode.InternalServerError)
-    } else {
-        val status = when (exception) {
-            is LibraryException.LibraryIllegalId,
-            is LibraryException.MangaIllegalId,
-            is LibraryException.ChapterIllegalId ->
-                HttpStatusCode.BadRequest
+internal suspend fun PipelineContext<Unit, ApplicationCall>.processFailure(exception: Throwable) {
+    val status = when (exception) {
+        is LibraryException -> {
+            when (exception) {
+                is LibraryException.LibraryIllegalId,
+                is LibraryException.MangaIllegalId,
+                is LibraryException.ChapterIllegalId ->
+                    HttpStatusCode.BadRequest
 
-            is LibraryException.LibraryNotFound,
-            is LibraryException.MangaNotFound,
-            is LibraryException.ChapterNotFound ->
-                HttpStatusCode.NotFound
-
-            is LibraryException.LibraryCanNotCreate,
-            is LibraryException.MangaCanNotCreate,
-            is LibraryException.ChapterCanNotCreate ->
-                HttpStatusCode.InternalServerError
+                is LibraryException.LibraryNotFound,
+                is LibraryException.MangaNotFound,
+                is LibraryException.ChapterNotFound ->
+                    HttpStatusCode.NotFound
+            }
         }
-        call.respondText(text = exception.message, status = status)
-    }
-}
 
-private suspend fun PipelineContext<Unit, ApplicationCall>.onRemoteProviderFailure(exception: Throwable) {
-    call.respondText(text = "Unknown error.", status = HttpStatusCode.InternalServerError)
+        else -> HttpStatusCode.InternalServerError
+    }
+    call.respondText(
+        text = exception.message ?: "Unknown error.",
+        status = status,
+    )
 }
 
 private sealed interface Provider {

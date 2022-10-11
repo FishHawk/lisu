@@ -9,7 +9,10 @@ import me.fishhawk.lisu.download.model.ChapterDownloadTask
 import me.fishhawk.lisu.download.model.MangaDownloadTask
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.source.SourceManager
+import org.slf4j.LoggerFactory
 import java.util.*
+
+internal val log = LoggerFactory.getLogger("downloader")
 
 class Downloader(
     private val libraryManager: LibraryManager,
@@ -65,13 +68,13 @@ class Downloader(
     }
 
     private suspend fun updateAll() {
-        workers.forEach { (providerId, worker) ->
+        workers.keys.forEach { providerId ->
             libraryManager
                 .getLibrary(providerId).getOrNull()
                 ?.listMangas()
                 ?.filter { it.get().isFinished != true }
                 ?.map { it.id }
-                ?.forEach { mangaId -> add(providerId, mangaId) }
+                ?.forEach { mangaId -> addMangaTask(providerId, mangaId) }
         }
     }
 
@@ -144,16 +147,18 @@ class Downloader(
         worker.cancelChapterTask(mangaId, collectionId, chapterId)
     }
 
-    suspend fun add(
+    suspend fun addMangaTask(
         providerId: String,
         mangaId: String,
     ) = withContext(context) {
         val worker = workers[providerId] ?: return@withContext
-        worker.createMangaDownloadTask(mangaId)?.let { task ->
-            if (tasks.none { it.providerId == providerId && it.mangaId == mangaId }) {
-                tasks.add(task)
-                worker.start()
+        worker.createMangaDownloadTask(mangaId)
+            .onSuccess { task ->
+                if (task != null && tasks.none { it == task }) {
+                    tasks.add(task)
+                    worker.start()
+                }
             }
-        }
+            .onFailure { log.warn("Fail to create manga task because: ${it.message}") }
     }
 }

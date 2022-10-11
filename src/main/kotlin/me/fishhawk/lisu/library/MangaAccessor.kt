@@ -1,6 +1,7 @@
 package me.fishhawk.lisu.library
 
-import kotlinx.serialization.KSerializer
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import me.fishhawk.lisu.library.model.*
 import me.fishhawk.lisu.util.*
@@ -8,83 +9,69 @@ import java.nio.file.Path
 
 private val json = Json { ignoreUnknownKeys = true }
 
+private inline fun <reified T> Path.deserializeAs(): Result<T> {
+    return readText().andThen { safeRunCatching { json.decodeFromString(it) } }
+}
+
+private inline fun <reified T> Path.serialize(item: T): Result<Unit> {
+    return safeRunCatching { json.encodeToString(item) }
+        .andThen { writeText(it) }
+}
+
 class MangaAccessor(val path: Path) {
     val id: String
         get() = path.name
 
     fun getSearchEntry(): SearchEntry {
-        return parseMetadataAs(SearchEntry.serializer())
+        return metadataPath.deserializeAs<SearchEntry>()
+            .getOrNull()
             ?.let { if (it.title == null) it.copy(title = id) else it }
             ?: SearchEntry(title = id)
     }
 
     fun get(): Manga {
-        return parseMetadataAs(MangaMetadata.serializer())
-            .let {
-                Manga(
-                    id = id,
+        return getMetadata().getOrNull().let {
+            Manga(
+                id = id,
 
-                    cover = null,
-                    updateTime = path.getLastModifiedTime(),
-                    title = it?.title,
-                    authors = it?.authors ?: emptyList(),
-                    isFinished = it?.isFinished,
-                )
-            }
+                cover = null,
+                updateTime = path.getLastModifiedTime(),
+                title = it?.title,
+                authors = it?.authors ?: emptyList(),
+                isFinished = it?.isFinished,
+            )
+        }
     }
 
     fun getDetail(): MangaDetail {
-        return parseMetadataAs(MangaMetadata.serializer())
-            .let {
-                val collections =
-                    if (it?.collections != null) buildCollectionsFromMetadata(it.collections)
-                    else if (it?.chapters == null) detectCollections(path).ifEmpty { null }
-                    else null
-                val chapters =
-                    if (collections != null) null
-                    else if (it?.chapters == null) detectChapters(path).ifEmpty { null }
-                    else buildChaptersFromMetadata(it.chapters)
-                val previews =
-                    if (collections != null || chapters != null) null
-                    else detectPreviews(path).ifEmpty { null }
-                MangaDetail(
-                    id = id,
+        val metadata = getMetadata().getOrNull()
+        val chapterMetadata = getChapterMetadata().getOrNull()
+        return MangaDetail(
+            id = id,
 
-                    cover = null,
-                    updateTime = path.getLastModifiedTime(),
-                    title = it?.title,
-                    authors = it?.authors ?: emptyList(),
-                    isFinished = it?.isFinished,
+            cover = null,
+            updateTime = path.getLastModifiedTime(),
+            title = metadata?.title,
+            authors = metadata?.authors ?: emptyList(),
+            isFinished = metadata?.isFinished,
 
-                    description = it?.description,
-                    tags = it?.tags ?: emptyMap(),
+            description = metadata?.description,
+            tags = metadata?.tags ?: emptyMap(),
 
-                    collections = collections
-                        ?: chapters?.let { mapOf("" to it) }
-                        ?: previews?.let { mapOf("" to listOf(Chapter(""))) }
-                        ?: emptyMap(),
-                    chapterPreviews = previews,
-                )
-            }
+            collections = detectCollections(path, chapterMetadata),
+            chapterPreviews = detectPreviews(path),
+        )
     }
 
-    private val metadataPath
-        get() = path.resolve("metadata.json")
+    private val chapterMetadataPath get() = path.resolve("chapterMetadata.json")
+    fun hasChapterMetadata(): Boolean = chapterMetadataPath.isRegularFile()
+    fun setChapterMetadata(metadata: MangaChapterMetadata): Result<Unit> = chapterMetadataPath.serialize(metadata)
+    private fun getChapterMetadata(): Result<MangaChapterMetadata> = chapterMetadataPath.deserializeAs()
 
-    fun hasMetadata(): Boolean {
-        return metadataPath.isRegularFile()
-    }
-
-    private fun <T> parseMetadataAs(serializer: KSerializer<T>): T? {
-        return metadataPath.readText()
-            .andThen { safeRunCatching { json.decodeFromString(serializer, it) } }
-            .getOrNull()
-    }
-
-    fun setMetadata(metadata: MangaMetadata): Result<Unit> {
-        return safeRunCatching { json.encodeToString(MangaMetadata.serializer(), metadata) }
-            .andThen(metadataPath::writeText)
-    }
+    private val metadataPath get() = path.resolve("metadata.json")
+    fun hasMetadata(): Boolean = metadataPath.isRegularFile()
+    fun setMetadata(metadata: MangaMetadata): Result<Unit> = metadataPath.serialize(metadata)
+    private fun getMetadata(): Result<MangaMetadata> = metadataPath.deserializeAs()
 
     fun hasCover(): Boolean {
         return path.listImageFiles()
@@ -150,63 +137,60 @@ class MangaAccessor(val path: Path) {
                 if (path.isDirectory()) {
                     Result.success(ChapterAccessor(path, depth))
                 } else {
-                    path.createDirAll().fold(
-                        onSuccess = { Result.success(ChapterAccessor(path, depth)) },
-                        onFailure = {
-                            Result.failure(
-                                LibraryException.ChapterCanNotCreate(collectionId, chapterId, it)
-                            )
-                        },
-                    ).onSuccess { it.setUnfinished() }
+                    path.createDirAll().map {
+                        ChapterAccessor(path, depth).apply { setUnfinished() }
+                    }
                 }
             }
     }
 }
 
-private fun buildCollectionsFromMetadata(
-    collectionsMetadata: Map<String, Map<String, ChapterMetadata>>
+private fun detectCollections(
+    path: Path,
+    chapterMetadata: MangaChapterMetadata?,
 ): Map<String, List<Chapter>> {
-    return collectionsMetadata.mapValues { (_, chaptersMetadata) ->
-        buildChaptersFromMetadata(chaptersMetadata)
+    fun detectChapters(collectionId: String, path: Path): List<Chapter> {
+        return path
+            .listDirectory()
+            .getOrDefault(emptyList())
+            .sortedWith(alphanumericOrder())
+            .map {
+                val chapterId = it.name
+                val metadata = chapterMetadata?.collections?.get(collectionId)?.get(chapterId)
+                if (metadata == null) {
+                    Chapter(
+                        id = chapterId,
+                        name = chapterId.substringBefore(" "),
+                        title = chapterId.substringAfter(" ").ifBlank { null },
+                        updateTime = it.getLastModifiedTime(),
+                    )
+                } else {
+                    Chapter(
+                        id = chapterId,
+                        name = metadata.name,
+                        title = metadata.title,
+                        updateTime = it.getLastModifiedTime(),
+                    )
+                }
+            }
     }
-}
 
-private fun buildChaptersFromMetadata(
-    chaptersMetadata: Map<String, ChapterMetadata>
-): List<Chapter> {
-    return chaptersMetadata.map { (chapterId, metadata) ->
-        Chapter(
-            id = chapterId,
-            name = metadata.name,
-            title = metadata.title,
-            updateTime = null,
-        )
-    }
-}
-
-private fun detectCollections(path: Path): Map<String, List<Chapter>> {
-    return path
+    val depth2 = path
         .listDirectory()
         .getOrDefault(emptyList())
         .sortedWith(alphanumericOrder())
-        .associate { it.name to detectChapters(it) }
+        .associate { it.name to detectChapters(it.name, it) }
         .filter { it.value.isNotEmpty() }
-}
+    if (depth2.isNotEmpty()) return depth2
 
-private fun detectChapters(path: Path): List<Chapter> {
-    return path
-        .listDirectory()
-        .getOrDefault(emptyList())
-        .sortedWith(alphanumericOrder())
-        .map {
-            val id = it.name
-            Chapter(
-                id = id,
-                name = id.substringBefore(" "),
-                title = id.substringAfter(" ").ifBlank { null },
-                updateTime = it.getLastModifiedTime(),
-            )
-        }
+    val depth1 = detectChapters("", path)
+    if (depth1.isNotEmpty()) return mapOf("" to depth1)
+
+    if (detectPreviews(path).isEmpty())
+        return emptyMap()
+
+    val depth0 = Chapter(id = "")
+    return mapOf("" to listOf(depth0))
 }
 
 private fun detectPreviews(path: Path): List<String> {

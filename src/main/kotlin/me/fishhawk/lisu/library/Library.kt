@@ -52,16 +52,19 @@ class Library(private val path: Path) {
                 if (path.isDirectory()) {
                     Result.success(MangaAccessor(path))
                 } else {
-                    path.createDirAll().fold(
-                        onSuccess = { Result.success(MangaAccessor(path)) },
-                        onFailure = { Result.failure(LibraryException.MangaCanNotCreate(id, it)) },
-                    )
+                    path.createDirAll().map { MangaAccessor(path) }
                 }
             }
     }
 
     fun deleteManga(id: String): Result<Unit> {
         return getMangaPath(id)
-            .andThen(Path::deleteDirAll)
+            .andThen { path->
+                if (path.isDirectory()) {
+                    path.deleteDirAll()
+                } else {
+                    Result.failure(LibraryException.MangaNotFound(id))
+                }
+            }
     }
 }
