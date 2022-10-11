@@ -1,29 +1,32 @@
 package me.fishhawk.lisu.api
 
+import io.ktor.resources.*
 import io.ktor.server.application.*
-import io.ktor.server.locations.*
-import io.ktor.server.locations.post
+import io.ktor.server.resources.post
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import me.fishhawk.lisu.download.Downloader
 
-@OptIn(KtorExperimentalLocationsAPI::class)
-private object DownloadLocation {
-    @Location("/start-all")
+private object DownloadResource {
+    @Serializable
+    @Resource("/start-all")
     object StartAll
 
-    @Location("/start-manga/{providerId}/{mangaId}")
+    @Serializable
+    @Resource("/start-manga/{providerId}/{mangaId}")
     data class StartManga(
         val providerId: String,
         val mangaId: String,
     )
 
-    @Location("/start-chapter/{providerId}/{mangaId}/{collectionId}/{chapterId}")
+    @Serializable
+    @Resource("/start-chapter/{providerId}/{mangaId}/{collectionId}/{chapterId}")
     data class StartChapter(
         val providerId: String,
         val mangaId: String,
@@ -31,16 +34,19 @@ private object DownloadLocation {
         val chapterId: String,
     )
 
-    @Location("/cancel-all")
+    @Serializable
+    @Resource("/cancel-all")
     object CancelAll
 
-    @Location("/cancel-manga/{providerId}/{mangaId}")
+    @Serializable
+    @Resource("/cancel-manga/{providerId}/{mangaId}")
     data class CancelManga(
         val providerId: String,
         val mangaId: String,
     )
 
-    @Location("/cancel-chapter/{providerId}/{mangaId}/{collectionId}/{chapterId}")
+    @Serializable
+    @Resource("/cancel-chapter/{providerId}/{mangaId}/{collectionId}/{chapterId}")
     data class CancelChapter(
         val providerId: String,
         val mangaId: String,
@@ -49,7 +55,6 @@ private object DownloadLocation {
     )
 }
 
-@OptIn(KtorExperimentalLocationsAPI::class)
 fun Route.downloadRoute(
     downloader: Downloader,
 ) {
@@ -65,32 +70,32 @@ fun Route.downloadRoute(
             job.cancel()
         }
 
-        post<DownloadLocation.StartAll> {
+        post<DownloadResource.StartAll> {
             downloader.startAllTasks()
             call.respond("Success")
         }
 
-        post<DownloadLocation.StartManga> { loc ->
+        post<DownloadResource.StartManga> { loc ->
             downloader.startMangaTask(loc.providerId, loc.mangaId)
             call.respond("Success")
         }
 
-        post<DownloadLocation.StartChapter> { loc ->
+        post<DownloadResource.StartChapter> { loc ->
             downloader.startChapterTask(loc.providerId, loc.mangaId, loc.collectionId, loc.chapterId)
             call.respond("Success")
         }
 
-        post<DownloadLocation.CancelAll> {
+        post<DownloadResource.CancelAll> {
             downloader.cancelAllTasks()
             call.respond("Success")
         }
 
-        post<DownloadLocation.CancelManga> { loc ->
+        post<DownloadResource.CancelManga> { loc ->
             downloader.cancelMangaTask(loc.providerId, loc.mangaId)
             call.respond("Success")
         }
 
-        post<DownloadLocation.CancelChapter> { loc ->
+        post<DownloadResource.CancelChapter> { loc ->
             downloader.cancelChapterTask(loc.providerId, loc.mangaId, loc.collectionId, loc.chapterId)
             call.respond("Success")
         }

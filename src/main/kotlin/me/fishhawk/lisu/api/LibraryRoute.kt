@@ -2,13 +2,16 @@ package me.fishhawk.lisu.api
 
 import io.ktor.http.*
 import io.ktor.http.content.*
+import io.ktor.resources.*
 import io.ktor.server.application.*
-import io.ktor.server.locations.*
-import io.ktor.server.locations.post
-import io.ktor.server.locations.put
 import io.ktor.server.request.*
+import io.ktor.server.resources.get
+import io.ktor.server.resources.post
+import io.ktor.server.resources.put
+import io.ktor.server.resources.delete
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.Serializable
 import me.fishhawk.lisu.api.model.MangaDto
 import me.fishhawk.lisu.api.model.MangaKeyDto
 import me.fishhawk.lisu.api.model.MangaState
@@ -19,28 +22,32 @@ import me.fishhawk.lisu.source.SourceManager
 import me.fishhawk.lisu.util.Image
 import me.fishhawk.lisu.util.andThen
 
-@OptIn(KtorExperimentalLocationsAPI::class)
-private object LibraryLocation {
-    @Location("/search")
+private object LibraryResource {
+    @Serializable
+    @Resource("/search")
     data class Search(val page: Int, val keywords: String)
 
-    @Location("/random-manga")
+    @Serializable
+    @Resource("/random-manga")
     object RandomManga
 
-    @Location("/manga/{providerId}/{mangaId}")
+    @Serializable
+    @Resource("/manga/{providerId}/{mangaId}")
     data class Manga(val providerId: String, val mangaId: String)
 
-    @Location("/manga/{providerId}/{mangaId}/cover")
+    @Serializable
+    @Resource("/manga/{providerId}/{mangaId}/cover")
     data class Cover(val providerId: String, val mangaId: String)
 
-    @Location("/manga/{providerId}/{mangaId}/metadata")
+    @Serializable
+    @Resource("/manga/{providerId}/{mangaId}/metadata")
     data class Metadata(val providerId: String, val mangaId: String)
 
-    @Location("/manga-delete")
+    @Serializable
+    @Resource("/manga-delete")
     object MangaDelete
 }
 
-@OptIn(KtorExperimentalLocationsAPI::class)
 fun Route.libraryRoute(
     libraryManager: LibraryManager,
     sourceManager: SourceManager,
@@ -51,7 +58,7 @@ fun Route.libraryRoute(
             if (sourceManager.hasSource(providerId)) MangaState.RemoteInLibrary
             else MangaState.Local
 
-        get<LibraryLocation.Search> { loc ->
+        get<LibraryResource.Search> { loc ->
             libraryManager
                 .search(loc.page, loc.keywords)
                 .map { (libraryId, manga) ->
@@ -64,7 +71,7 @@ fun Route.libraryRoute(
                 .let { call.respond(it) }
         }
 
-        get<LibraryLocation.RandomManga> {
+        get<LibraryResource.RandomManga> {
             libraryManager
                 .getRandomManga()
                 ?.let { (libraryId, manga) ->
@@ -78,7 +85,7 @@ fun Route.libraryRoute(
                 ?: call.respondText(text = "No manga found.", status = HttpStatusCode.NotFound)
         }
 
-        post<LibraryLocation.Manga> { loc ->
+        post<LibraryResource.Manga> { loc ->
             libraryManager
                 .createLibrary(loc.providerId)
                 .andThen { it.createManga(loc.mangaId) }
@@ -92,7 +99,7 @@ fun Route.libraryRoute(
                 .onFailure { handleFailure(it) }
         }
 
-        delete<LibraryLocation.Manga> { loc ->
+        delete<LibraryResource.Manga> { loc ->
             libraryManager
                 .getLibrary(loc.providerId)
                 .andThen { it.deleteManga(loc.mangaId) }
@@ -106,7 +113,7 @@ fun Route.libraryRoute(
                 .onFailure { handleFailure(it) }
         }
 
-        put<LibraryLocation.Cover> { loc ->
+        put<LibraryResource.Cover> { loc ->
             val image = call
                 .receiveMultipart()
                 .readAllParts()
@@ -130,7 +137,7 @@ fun Route.libraryRoute(
                 .onFailure { handleFailure(it) }
         }
 
-        put<LibraryLocation.Metadata> { loc ->
+        put<LibraryResource.Metadata> { loc ->
             val metadata = call.receive<MangaMetadata>()
             libraryManager.getLibrary(loc.providerId)
                 .andThen { it.getManga(loc.mangaId) }
@@ -142,7 +149,7 @@ fun Route.libraryRoute(
                 .onFailure { handleFailure(it) }
         }
 
-        post<LibraryLocation.MangaDelete> {
+        post<LibraryResource.MangaDelete> {
             val mangaKeys = call.receive<List<MangaKeyDto>>()
             val failedKeys = mangaKeys.filter { key ->
                 libraryManager

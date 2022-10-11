@@ -2,14 +2,17 @@ package me.fishhawk.lisu.api
 
 import io.ktor.http.*
 import io.ktor.http.content.*
+import io.ktor.resources.*
 import io.ktor.server.application.*
-import io.ktor.server.locations.*
-import io.ktor.server.locations.post
 import io.ktor.server.plugins.cachingheaders.*
 import io.ktor.server.request.*
+import io.ktor.server.resources.get
+import io.ktor.server.resources.post
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.routing.get
 import io.ktor.util.pipeline.*
+import kotlinx.serialization.Serializable
 import me.fishhawk.lisu.api.model.*
 import me.fishhawk.lisu.library.*
 import me.fishhawk.lisu.library.model.Manga
@@ -21,37 +24,45 @@ import me.fishhawk.lisu.util.Image
 import me.fishhawk.lisu.util.andThen
 import me.fishhawk.lisu.util.respondImage
 
-@OptIn(KtorExperimentalLocationsAPI::class)
-private object ProviderLocation {
-    @Location("/{providerId}/icon")
+private object ProviderResource {
+    @Serializable
+    @Resource("/{providerId}/icon")
     data class Icon(val providerId: String)
 
-    @Location("/{providerId}/login-cookies")
+    @Serializable
+    @Resource("/{providerId}/login-cookies")
     data class LoginByCookies(val providerId: String)
 
-    @Location("/{providerId}/login-password")
+    @Serializable
+    @Resource("/{providerId}/login-password")
     data class LoginByPassword(val providerId: String, val username: String, val password: String)
 
-    @Location("/{providerId}/logout")
+    @Serializable
+    @Resource("/{providerId}/logout")
     data class Logout(val providerId: String)
 
-    @Location("/{providerId}/manga/{mangaId}/comment")
+    @Serializable
+    @Resource("/{providerId}/manga/{mangaId}/comment")
     data class Comment(val providerId: String, val mangaId: String, val page: Int)
 
-    @Location("/{providerId}/board/{boardId}")
+    @Serializable
+    @Resource("/{providerId}/board/{boardId}")
     data class Board(val providerId: String, val boardId: BoardId, val page: Int)
 
-    @Location("/{providerId}/manga/{mangaId}")
+    @Serializable
+    @Resource("/{providerId}/manga/{mangaId}")
     data class Manga(val providerId: String, val mangaId: String)
 
-    @Location("/{providerId}/manga/{mangaId}/cover")
+    @Serializable
+    @Resource("/{providerId}/manga/{mangaId}/cover")
     data class Cover(
         val providerId: String,
         val mangaId: String,
         val imageId: String,
     )
 
-    @Location("/{providerId}/manga/{mangaId}/content")
+    @Serializable
+    @Resource("/{providerId}/manga/{mangaId}/content")
     data class Content(
         val providerId: String,
         val mangaId: String,
@@ -59,7 +70,8 @@ private object ProviderLocation {
         val chapterId: String,
     )
 
-    @Location("/{providerId}/manga/{mangaId}/image")
+    @Serializable
+    @Resource("/{providerId}/manga/{mangaId}/image")
     data class Image(
         val providerId: String,
         val mangaId: String,
@@ -69,7 +81,6 @@ private object ProviderLocation {
     )
 }
 
-@OptIn(KtorExperimentalLocationsAPI::class)
 fun Route.providerRoute(
     libraryManager: LibraryManager,
     sourceManager: SourceManager,
@@ -132,7 +143,7 @@ fun Route.providerRoute(
             call.respond(remoteProviders + localProviders)
         }
 
-        get<ProviderLocation.Icon> { loc ->
+        get<ProviderResource.Icon> { loc ->
             getRemoteProvider(loc.providerId)?.apply {
                 val image = source::class.java.getResourceAsStream("icon.png")
                     ?.let { Image(ContentType.Image.PNG, it) }
@@ -147,7 +158,7 @@ fun Route.providerRoute(
             }
         }
 
-        post<ProviderLocation.LoginByCookies> { loc ->
+        post<ProviderResource.LoginByCookies> { loc ->
             getRemoteProvider(loc.providerId)?.apply {
                 val cookies = call.receive<Map<String, String>>()
                 val isSuccess = source.loginFeature?.cookiesLogin?.login(cookies) ?: false
@@ -156,7 +167,7 @@ fun Route.providerRoute(
             }
         }
 
-        post<ProviderLocation.LoginByPassword> { loc ->
+        post<ProviderResource.LoginByPassword> { loc ->
             getRemoteProvider(loc.providerId)?.apply {
                 val isSuccess = source.loginFeature?.passwordLogin?.login(loc.username, loc.password) ?: false
                 if (isSuccess) call.respondText("Success")
@@ -164,14 +175,14 @@ fun Route.providerRoute(
             }
         }
 
-        post<ProviderLocation.Logout> { loc ->
+        post<ProviderResource.Logout> { loc ->
             getRemoteProvider(loc.providerId)?.apply {
                 source.loginFeature?.logout()
                 call.respondText("Success")
             }
         }
 
-        get<ProviderLocation.Comment> { loc ->
+        get<ProviderResource.Comment> { loc ->
             getRemoteProvider(loc.providerId)?.apply {
                 source.commentFeature?.getComment(loc.mangaId, loc.page)
                     ?.onSuccess { call.respond(it) }
@@ -183,7 +194,7 @@ fun Route.providerRoute(
             }
         }
 
-        get<ProviderLocation.Board> { loc ->
+        get<ProviderResource.Board> { loc ->
             getProvider(loc.providerId)
                 ?.onLocal {
                     library
@@ -200,7 +211,7 @@ fun Route.providerRoute(
                 }
         }
 
-        get<ProviderLocation.Manga> { loc ->
+        get<ProviderResource.Manga> { loc ->
             getProvider(loc.providerId)?.onLocal {
                 library
                     .getManga(loc.mangaId)
@@ -216,7 +227,7 @@ fun Route.providerRoute(
             }
         }
 
-        get<ProviderLocation.Cover> { loc ->
+        get<ProviderResource.Cover> { loc ->
             getProvider(loc.providerId)?.onLocal {
                 library
                     .getManga(loc.mangaId)
@@ -242,7 +253,7 @@ fun Route.providerRoute(
             }
         }
 
-        get<ProviderLocation.Content> { loc ->
+        get<ProviderResource.Content> { loc ->
             getProvider(loc.providerId)?.onLocal {
                 library
                     .getManga(loc.mangaId)
@@ -270,7 +281,7 @@ fun Route.providerRoute(
             }
         }
 
-        get<ProviderLocation.Image> { loc ->
+        get<ProviderResource.Image> { loc ->
             getProvider(loc.providerId)?.onLocal {
                 library
                     .getManga(loc.mangaId)
