@@ -186,9 +186,9 @@ fun Route.providerRoute(
             getRemoteProvider(loc.providerId)?.apply {
                 source.commentFeature?.getComment(loc.mangaId, loc.page)
                     ?.onSuccess { call.respond(it) }
-                    ?.onFailure { }
+                    ?.onFailure { handleFailure(it) }
                     ?: call.respondText(
-                        text = "Cover not found.",
+                        text = "Comment not found.",
                         status = HttpStatusCode.NotFound,
                     )
             }
@@ -261,7 +261,7 @@ fun Route.providerRoute(
                     .map { it.getContent() }
                     .onSuccess {
                         if (it == null) call.respondText(
-                            text = "Cover not found.",
+                            text = "Content not found.",
                             status = HttpStatusCode.NotFound,
                         )
                         else call.respond(it)

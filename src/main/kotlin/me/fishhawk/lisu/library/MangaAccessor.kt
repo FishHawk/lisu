@@ -76,7 +76,7 @@ class MangaAccessor(val path: Path) {
     fun hasCover(): Boolean {
         return path.listImageFiles()
             .getOrDefault(emptyList())
-            .isEmpty()
+            .isNotEmpty()
     }
 
     fun getCover(): Image? {

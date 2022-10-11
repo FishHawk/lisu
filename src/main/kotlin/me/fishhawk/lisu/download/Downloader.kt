@@ -7,6 +7,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import me.fishhawk.lisu.download.model.ChapterDownloadTask
 import me.fishhawk.lisu.download.model.MangaDownloadTask
+import me.fishhawk.lisu.library.LibraryException
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.source.SourceManager
 import org.slf4j.LoggerFactory
@@ -70,11 +71,13 @@ class Downloader(
     private suspend fun updateAll() {
         workers.keys.forEach { providerId ->
             libraryManager
-                .getLibrary(providerId).getOrNull()
-                ?.listMangas()
-                ?.filter { it.get().isFinished != true }
-                ?.map { it.id }
-                ?.forEach { mangaId -> addMangaTask(providerId, mangaId) }
+                .getLibrary(providerId)
+                .onSuccess { library ->
+                    library.listMangas()
+                        .filter { it.get().isFinished != true }
+                        .map { it.id }
+                        .forEach { mangaId -> addMangaTask(providerId, mangaId) }
+                }
         }
     }
 
@@ -159,6 +162,8 @@ class Downloader(
                     worker.start()
                 }
             }
-            .onFailure { log.warn("Fail to create manga task because: ${it.message}") }
+            .onFailure {
+                log.warn("Fail to create manga task $providerId/$mangaId because: ${it.message}")
+            }
     }
 }
