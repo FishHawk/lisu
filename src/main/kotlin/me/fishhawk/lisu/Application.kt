@@ -1,5 +1,12 @@
 package me.fishhawk.lisu
 
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.flag
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.file
+import com.github.ajalt.clikt.parameters.types.int
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -10,81 +17,88 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
-import kotlinx.cli.ArgParser
-import kotlinx.cli.ArgType
-import kotlinx.cli.default
-import kotlinx.cli.optional
 import kotlinx.serialization.json.Json
-import me.fishhawk.lisu.api.downloadRoutes
-import me.fishhawk.lisu.api.libraryRoutes
-import me.fishhawk.lisu.api.providerRoutes
-import me.fishhawk.lisu.api.systemRoutes
+import me.fishhawk.lisu.api.*
 import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.source.SourceManager
-import kotlin.io.path.Path
 
-fun main(args: Array<String>) {
-    // Parse arguments.
-    val parser = ArgParser("lisu")
+private class Lisu : CliktCommand() {
+    val readonly by this
+        .option(help = "enable readonly mode")
+        .flag()
 
-    val libraryPath by parser.argument(
-        type = ArgType.String,
-        description = "Library path"
-    ).optional().default("./")
+    val libraryPath by this
+        .argument(help = "library path")
+        .file(
+            mustExist = true,
+            canBeFile = false,
+            canBeDir = true,
+            mustBeWritable = false,
+            mustBeReadable = true,
+            canBeSymlink = true,
+        )
 
-    val port by parser.option(
-        type = ArgType.Int,
-        fullName = "port",
-        shortName = "p",
-        description = "Backend port"
-    ).default(8080)
+    val port: Int by this
+        .option(
+            "-n", "--name",
+            help = "backend port",
+        )
+        .int()
+        .default(8080)
 
-    parser.parse(args)
+    override fun run() {
+        // Create singleton.
+        val libraryManager = LibraryManager(
+            path = libraryPath.toPath(),
+        )
+        val sourceManager = SourceManager()
+        val downloader = Downloader(
+            libraryManager = libraryManager,
+            sourceManager = sourceManager,
+        )
 
-    // Create singleton.
-    val libraryManager = LibraryManager(
-        path = Path(libraryPath),
-    )
-    val sourceManager = SourceManager()
-    val downloader = Downloader(
-        libraryManager = libraryManager,
-        sourceManager = sourceManager,
-    )
+        // Start server.
+        embeddedServer(Netty, port) {
+            install(Locations)
 
-    // Start server.
-    embeddedServer(Netty, port) {
-        install(Locations)
-
-        install(ContentNegotiation) {
-            json(Json {
-                isLenient = true
-            })
-        }
-
-        install(WebSockets)
-
-        install(CallLogging) {
-            format { call ->
-                val status = call.response.status()
-                val httpMethod = call.request.httpMethod.value
-                val uri = call.request.uri
-                "$httpMethod-$status $uri"
+            install(ContentNegotiation) {
+                json(Json {
+                    isLenient = true
+                })
             }
-        }
 
-        routing {
-            libraryRoutes(
-                libraryManager = libraryManager,
-                sourceManager = sourceManager,
-                downloader = downloader,
-            )
-            providerRoutes(
-                libraryManager = libraryManager,
-                sourceManager = sourceManager,
-            )
-            downloadRoutes(downloader)
-            systemRoutes()
-        }
-    }.start(wait = true)
+            install(WebSockets)
+
+            install(CallLogging) {
+                format { call ->
+                    val status = call.response.status()
+                    val httpMethod = call.request.httpMethod.value
+                    val uri = call.request.uri
+                    "$httpMethod-$status $uri"
+                }
+            }
+
+            routing {
+                readonlyIntercept(
+                    readonly = readonly,
+                )
+                libraryRoute(
+                    libraryManager = libraryManager,
+                    sourceManager = sourceManager,
+                    downloader = downloader,
+                )
+                providerRoute(
+                    libraryManager = libraryManager,
+                    sourceManager = sourceManager,
+                )
+                downloadRoute(
+                    downloader = downloader,
+                )
+                systemRoute()
+            }
+        }.start(wait = true)
+    }
 }
+
+fun main(argv: Array<String>) = Lisu().main(argv)

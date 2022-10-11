@@ -50,7 +50,7 @@ private object DownloadLocation {
 }
 
 @OptIn(KtorExperimentalLocationsAPI::class)
-fun Route.downloadRoutes(
+fun Route.downloadRoute(
     downloader: Downloader,
 ) {
     route("/download") {

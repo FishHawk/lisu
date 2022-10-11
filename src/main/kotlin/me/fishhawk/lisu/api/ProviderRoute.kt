@@ -70,7 +70,7 @@ private object ProviderLocation {
 }
 
 @OptIn(KtorExperimentalLocationsAPI::class)
-fun Route.providerRoutes(
+fun Route.providerRoute(
     libraryManager: LibraryManager,
     sourceManager: SourceManager,
 ) {
@@ -196,7 +196,7 @@ fun Route.providerRoutes(
                         .getBoard(loc.boardId, loc.page, call.request.queryParameters)
                         .map { list -> list.map { it.toDto() } }
                         .onSuccess { call.respond(it) }
-                        .onFailure { processFailure(it) }
+                        .onFailure { handleFailure(it) }
                 }
         }
 
@@ -206,13 +206,13 @@ fun Route.providerRoutes(
                     .getManga(loc.mangaId)
                     .map { it.getDetail().toDto() }
                     .onSuccess { call.respond(it) }
-                    .onFailure { processFailure(it) }
+                    .onFailure { handleFailure(it) }
             }?.onRemote {
                 source
                     .getManga(loc.mangaId)
                     .map { it.toDto() }
                     .onSuccess { call.respond(it) }
-                    .onFailure { processFailure(it) }
+                    .onFailure { handleFailure(it) }
             }
         }
 
@@ -228,7 +228,7 @@ fun Route.providerRoutes(
                         )
                         else call.respondImage(it)
                     }
-                    .onFailure { processFailure(it) }
+                    .onFailure { handleFailure(it) }
             }?.onRemote {
                 // Using Cache
                 library
@@ -238,7 +238,7 @@ fun Route.providerRoutes(
                     ?.let { return@onRemote call.respondImage(it) }
                 source.getImage(loc.imageId)
                     .onSuccess { call.respondImage(it) }
-                    .onFailure { processFailure(it) }
+                    .onFailure { handleFailure(it) }
             }
         }
 
@@ -255,7 +255,7 @@ fun Route.providerRoutes(
                         )
                         else call.respond(it)
                     }
-                    .onFailure { processFailure(it) }
+                    .onFailure { handleFailure(it) }
             }?.onRemote {
                 // Using Cache
                 library
@@ -266,7 +266,7 @@ fun Route.providerRoutes(
                     ?.let { return@onRemote call.respond(it) }
                 source.getContent(loc.mangaId, loc.chapterId)
                     .onSuccess { call.respond(it) }
-                    .onFailure { processFailure(it) }
+                    .onFailure { handleFailure(it) }
             }
         }
 
@@ -283,7 +283,7 @@ fun Route.providerRoutes(
                         )
                         else call.respondImage(it)
                     }
-                    .onFailure { processFailure(it) }
+                    .onFailure { handleFailure(it) }
             }?.onRemote {
                 // Using Cache
                 library
@@ -294,34 +294,10 @@ fun Route.providerRoutes(
                     ?.let { return@onRemote call.respondImage(it) }
                 source.getImage(loc.imageId)
                     .onSuccess { call.respondImage(it) }
-                    .onFailure { processFailure(it) }
+                    .onFailure { handleFailure(it) }
             }
         }
     }
-}
-
-internal suspend fun PipelineContext<Unit, ApplicationCall>.processFailure(exception: Throwable) {
-    val status = when (exception) {
-        is LibraryException -> {
-            when (exception) {
-                is LibraryException.LibraryIllegalId,
-                is LibraryException.MangaIllegalId,
-                is LibraryException.ChapterIllegalId ->
-                    HttpStatusCode.BadRequest
-
-                is LibraryException.LibraryNotFound,
-                is LibraryException.MangaNotFound,
-                is LibraryException.ChapterNotFound ->
-                    HttpStatusCode.NotFound
-            }
-        }
-
-        else -> HttpStatusCode.InternalServerError
-    }
-    call.respondText(
-        text = exception.message ?: "Unknown error.",
-        status = status,
-    )
 }
 
 private sealed interface Provider {

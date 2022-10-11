@@ -41,10 +41,10 @@ private object LibraryLocation {
 }
 
 @OptIn(KtorExperimentalLocationsAPI::class)
-fun Route.libraryRoutes(
+fun Route.libraryRoute(
     libraryManager: LibraryManager,
     sourceManager: SourceManager,
-    downloader: Downloader
+    downloader: Downloader,
 ) {
     route("/library") {
         fun getMangaState(providerId: String) =
@@ -89,7 +89,7 @@ fun Route.libraryRoutes(
                     )
                     downloader.addMangaTask(loc.providerId, loc.mangaId)
                 }
-                .onFailure { processFailure(it) }
+                .onFailure { handleFailure(it) }
         }
 
         delete<LibraryLocation.Manga> { loc ->
@@ -103,7 +103,7 @@ fun Route.libraryRoutes(
                     )
                     downloader.cancelMangaTask(loc.providerId, loc.mangaId)
                 }
-                .onFailure { processFailure(it) }
+                .onFailure { handleFailure(it) }
         }
 
         put<LibraryLocation.Cover> { loc ->
@@ -127,7 +127,7 @@ fun Route.libraryRoutes(
                         text = "Success.",
                     )
                 }
-                .onFailure { processFailure(it) }
+                .onFailure { handleFailure(it) }
         }
 
         put<LibraryLocation.Metadata> { loc ->
@@ -139,7 +139,7 @@ fun Route.libraryRoutes(
                         .andThen { mangaAccessor.getMetadata() }
                 }
                 .onSuccess { call.respond(it) }
-                .onFailure { processFailure(it) }
+                .onFailure { handleFailure(it) }
         }
 
         post<LibraryLocation.MangaDelete> {

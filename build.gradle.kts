@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.5")
+    implementation("com.github.ajalt.clikt:clikt:3.5.0")
 
     val ktorVersion = "2.1.2"
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
