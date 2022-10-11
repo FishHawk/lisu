@@ -25,7 +25,17 @@ import me.fishhawk.lisu.source.SourceManager
 
 private class Lisu : CliktCommand() {
     val readonly by this
-        .option(help = "enable readonly mode")
+        .option(
+            "--readonly",
+            help = "enable readonly mode",
+        )
+        .flag()
+
+    val updateImmediately by this
+        .option(
+            "-i",
+            help = "update library once immediately"
+        )
         .flag()
 
     val libraryPath by this
@@ -41,7 +51,7 @@ private class Lisu : CliktCommand() {
 
     val port: Int by this
         .option(
-            "-n", "--name",
+            "-p", "--port",
             help = "backend port",
         )
         .int()
@@ -54,6 +64,7 @@ private class Lisu : CliktCommand() {
         )
         val sourceManager = SourceManager()
         val downloader = Downloader(
+            updateImmediately = updateImmediately,
             libraryManager = libraryManager,
             sourceManager = sourceManager,
         )

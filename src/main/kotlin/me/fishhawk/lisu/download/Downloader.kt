@@ -7,7 +7,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import me.fishhawk.lisu.download.model.ChapterDownloadTask
 import me.fishhawk.lisu.download.model.MangaDownloadTask
-import me.fishhawk.lisu.library.LibraryException
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.source.SourceManager
 import org.slf4j.LoggerFactory
@@ -16,6 +15,7 @@ import java.util.*
 internal val log = LoggerFactory.getLogger("downloader")
 
 class Downloader(
+    updateImmediately: Boolean,
     private val libraryManager: LibraryManager,
     sourceManager: SourceManager
 ) {
@@ -61,7 +61,9 @@ class Downloader(
 
     init {
         scope.launch {
-            updateAll()
+            if (updateImmediately) {
+                updateAll()
+            }
             updater.doInfinityTz {
                 updateAll()
             }
