@@ -71,7 +71,7 @@ class MangaAccessor(val path: Path) {
     private val metadataPath get() = path.resolve("metadata.json")
     fun hasMetadata(): Boolean = metadataPath.isRegularFile()
     fun setMetadata(metadata: MangaMetadata): Result<Unit> = metadataPath.serialize(metadata)
-    private fun getMetadata(): Result<MangaMetadata> = metadataPath.deserializeAs()
+    fun getMetadata(): Result<MangaMetadata> = metadataPath.deserializeAs()
 
     fun hasCover(): Boolean {
         return path.listImageFiles()
@@ -103,13 +103,13 @@ class MangaAccessor(val path: Path) {
         collectionId: String,
         chapterId: String
     ): Result<Pair<Path, ChapterAccessor.Depth>> {
-        return if (collectionId.isNotBlank()) {
+        return if (collectionId.isNotEmpty()) {
             if (collectionId.isFilename() && chapterId.isFilename()) {
                 Result.success(Pair(path.resolve(collectionId).resolve(chapterId), ChapterAccessor.Depth.Two))
             } else {
                 Result.failure(LibraryException.ChapterIllegalId(collectionId, chapterId))
             }
-        } else if (chapterId.isNotBlank()) {
+        } else if (chapterId.isNotEmpty()) {
             if (chapterId.isFilename()) {
                 Result.success(Pair(path.resolve(chapterId), ChapterAccessor.Depth.One))
             } else {

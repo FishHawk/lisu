@@ -134,13 +134,11 @@ fun Route.libraryRoutes(
             val metadata = call.receive<MangaMetadata>()
             libraryManager.getLibrary(loc.providerId)
                 .andThen { it.getManga(loc.mangaId) }
-                .andThen { it.setMetadata(metadata) }
-                .onSuccess {
-                    call.respondText(
-                        status = HttpStatusCode.NoContent,
-                        text = "Success.",
-                    )
+                .andThen { mangaAccessor ->
+                    mangaAccessor.setMetadata(metadata)
+                        .andThen { mangaAccessor.getMetadata() }
                 }
+                .onSuccess { call.respond(it) }
                 .onFailure { processFailure(it) }
         }
 

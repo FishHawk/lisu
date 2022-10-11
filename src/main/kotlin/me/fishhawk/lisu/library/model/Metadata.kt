@@ -21,11 +21,11 @@ data class MangaChapterMetadata(
 
 @Serializable
 data class MangaMetadata(
-    val title: String?,
-    val authors: List<String>?,
-    val isFinished: Boolean?,
-    val description: String?,
-    val tags: Map<String, List<String>>,
+    val title: String? = null,
+    val authors: List<String>? = null,
+    val isFinished: Boolean? = null,
+    val description: String? = null,
+    val tags: Map<String, List<String>> = emptyMap(),
 ) {
     companion object {
         fun fromMangaDetail(detail: MangaDetail): MangaMetadata {
