@@ -10,7 +10,6 @@ import io.ktor.server.resources.get
 import io.ktor.server.resources.post
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.routing.get
 import io.ktor.util.pipeline.*
 import kotlinx.serialization.Serializable
 import me.fishhawk.lisu.api.model.*
@@ -24,46 +23,79 @@ import me.fishhawk.lisu.util.Image
 import me.fishhawk.lisu.util.andThen
 import me.fishhawk.lisu.util.respondImage
 
-private object ProviderResource {
+@Serializable
+@Resource("/provider")
+private class Provider {
     @Serializable
     @Resource("/{providerId}/icon")
-    data class Icon(val providerId: String)
+    data class Icon(
+        val parent: Provider = Provider(),
+        val providerId: String,
+    )
 
     @Serializable
     @Resource("/{providerId}/login-cookies")
-    data class LoginByCookies(val providerId: String)
+    data class LoginByCookies(
+        val parent: Provider = Provider(),
+        val providerId: String,
+    )
 
     @Serializable
     @Resource("/{providerId}/login-password")
-    data class LoginByPassword(val providerId: String, val username: String, val password: String)
+    data class LoginByPassword(
+        val parent: Provider = Provider(),
+        val providerId: String,
+        val username: String,
+        val password: String,
+    )
 
     @Serializable
     @Resource("/{providerId}/logout")
-    data class Logout(val providerId: String)
-
-    @Serializable
-    @Resource("/{providerId}/manga/{mangaId}/comment")
-    data class Comment(val providerId: String, val mangaId: String, val page: Int)
+    data class Logout(
+        val parent: Provider = Provider(),
+        val providerId: String,
+    )
 
     @Serializable
     @Resource("/{providerId}/board/{boardId}")
-    data class Board(val providerId: String, val boardId: BoardId, val page: Int)
+    data class Board(
+        val parent: Provider = Provider(),
+        val providerId: String,
+        val boardId: BoardId,
+        val page: Int,
+        val keywords: String?,
+    )
 
     @Serializable
     @Resource("/{providerId}/manga/{mangaId}")
-    data class Manga(val providerId: String, val mangaId: String)
+    data class Manga(
+        val parent: Provider = Provider(),
+        val providerId: String,
+        val mangaId: String,
+    )
+
+    @Serializable
+    @Resource("/{providerId}/manga/{mangaId}/comment")
+    data class Comment(
+        val parent: Provider = Provider(),
+        val providerId: String,
+        val mangaId: String,
+        val page: Int,
+    )
 
     @Serializable
     @Resource("/{providerId}/manga/{mangaId}/cover")
     data class Cover(
+        val parent: Provider = Provider(),
         val providerId: String,
         val mangaId: String,
-        val imageId: String,
+        val imageId: String? = null,
     )
 
     @Serializable
     @Resource("/{providerId}/manga/{mangaId}/content")
     data class Content(
+        val parent: Provider = Provider(),
         val providerId: String,
         val mangaId: String,
         val collectionId: String,
@@ -73,6 +105,7 @@ private object ProviderResource {
     @Serializable
     @Resource("/{providerId}/manga/{mangaId}/image")
     data class Image(
+        val parent: Provider = Provider(),
         val providerId: String,
         val mangaId: String,
         val collectionId: String,
@@ -85,14 +118,14 @@ fun Route.providerRoute(
     libraryManager: LibraryManager,
     sourceManager: SourceManager,
 ) {
-    suspend fun PipelineContext<Unit, ApplicationCall>.getProvider(providerId: String): Provider? {
+    suspend fun PipelineContext<Unit, ApplicationCall>.getProvider(providerId: String): ProviderAdapter? {
         val source = sourceManager.getSource(providerId)
         val library = libraryManager.getLibrary(providerId).getOrNull()
         val provider =
             if (source != null) {
-                Provider.Remote(source, library)
+                ProviderAdapter.Remote(source, library)
             } else if (library != null) {
-                Provider.Local(library)
+                ProviderAdapter.Local(library)
             } else {
                 call.respondText(
                     text = "Provider not found.",
@@ -103,12 +136,12 @@ fun Route.providerRoute(
         return provider
     }
 
-    suspend fun PipelineContext<Unit, ApplicationCall>.getRemoteProvider(providerId: String): Provider.Remote? {
+    suspend fun PipelineContext<Unit, ApplicationCall>.getRemoteProvider(providerId: String): ProviderAdapter.Remote? {
         val source = sourceManager.getSource(providerId)
         val library = libraryManager.getLibrary(providerId).getOrNull()
         val provider =
             if (source != null) {
-                Provider.Remote(source, library)
+                ProviderAdapter.Remote(source, library)
             } else {
                 call.respondText(
                     text = "Provider not found.",
@@ -119,200 +152,192 @@ fun Route.providerRoute(
         return provider
     }
 
-    route("/provider") {
-        install(CachingHeaders) {
-            options { _, outgoingContent ->
-                when (outgoingContent.contentType?.withoutParameters()?.contentType) {
-                    ContentType.Image.Any.contentType -> {
-                        CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 10 * 24 * 3600))
-                    }
+    get<Provider> {
+        val remoteProviders = sourceManager
+            .listSources()
+            .map { ProviderDto.fromSource(it) }
+        val localProviders = libraryManager
+            .listLibraries()
+            .filter { library -> remoteProviders.none { it.id == library.id } }
+            .map { ProviderDto.fromLibrary(it) }
+        call.respond(remoteProviders + localProviders)
+    }
 
-                    else -> null
-                }
+    get<Provider.Icon> { loc ->
+        getRemoteProvider(loc.providerId)?.apply {
+            val image = source::class.java.getResourceAsStream("icon.png")
+                ?.let { Image(ContentType.Image.PNG, it) }
+            if (image == null) {
+                call.respondText(
+                    text = "Cover not found.",
+                    status = HttpStatusCode.NotFound,
+                )
+            } else {
+                call.respondImage(image)
             }
         }
+    }
 
-        get {
-            val remoteProviders = sourceManager
-                .listSources()
-                .map { ProviderDto.fromSource(it) }
-            val localProviders = libraryManager
-                .listLibraries()
-                .filter { library -> remoteProviders.none { it.id == library.id } }
-                .map { ProviderDto.fromLibrary(it) }
-            call.respond(remoteProviders + localProviders)
+    post<Provider.LoginByCookies> { loc ->
+        getRemoteProvider(loc.providerId)?.apply {
+            val cookies = call.receive<Map<String, String>>()
+            val isSuccess = source.loginFeature?.cookiesLogin?.login(cookies) ?: false
+            if (isSuccess) call.respondText("Success")
+            else call.respondText(status = HttpStatusCode.InternalServerError, text = "")
         }
+    }
 
-        get<ProviderResource.Icon> { loc ->
-            getRemoteProvider(loc.providerId)?.apply {
-                val image = source::class.java.getResourceAsStream("icon.png")
-                    ?.let { Image(ContentType.Image.PNG, it) }
-                if (image == null) {
-                    call.respondText(
+    post<Provider.LoginByPassword> { loc ->
+        getRemoteProvider(loc.providerId)?.apply {
+            val isSuccess = source.loginFeature?.passwordLogin?.login(loc.username, loc.password) ?: false
+            if (isSuccess) call.respondText("Success")
+            else call.respondText(status = HttpStatusCode.InternalServerError, text = "")
+        }
+    }
+
+    post<Provider.Logout> { loc ->
+        getRemoteProvider(loc.providerId)?.apply {
+            source.loginFeature?.logout()
+            call.respondText("Success")
+        }
+    }
+
+    get<Provider.Comment> { loc ->
+        getRemoteProvider(loc.providerId)?.apply {
+            source.commentFeature?.getComment(loc.mangaId, loc.page)
+                ?.onSuccess { call.respond(it) }
+                ?.onFailure { handleFailure(it) }
+                ?: call.respondText(
+                    text = "Comment not found.",
+                    status = HttpStatusCode.NotFound,
+                )
+        }
+    }
+
+    get<Provider.Board> { loc ->
+        getProvider(loc.providerId)
+            ?.onLocal {
+                library
+                    .search(loc.page, "")
+                    .map { it.toDto() }
+                    .let { call.respond(it) }
+            }
+            ?.onRemote {
+                source
+                    .getBoard(loc.boardId, loc.page, call.request.queryParameters)
+                    .map { list -> list.map { it.toDto() } }
+                    .onSuccess { call.respond(it) }
+                    .onFailure { handleFailure(it) }
+            }
+    }
+
+    get<Provider.Manga> { loc ->
+        getProvider(loc.providerId)?.onLocal {
+            library
+                .getManga(loc.mangaId)
+                .map { it.getDetail().toDto() }
+                .onSuccess { call.respond(it) }
+                .onFailure { handleFailure(it) }
+        }?.onRemote {
+            source
+                .getManga(loc.mangaId)
+                .map { it.toDto() }
+                .onSuccess { call.respond(it) }
+                .onFailure { handleFailure(it) }
+        }
+    }
+
+    get<Provider.Cover> { loc ->
+        getProvider(loc.providerId)?.onLocal {
+            library
+                .getManga(loc.mangaId)
+                .map { it.getCover() }
+                .onSuccess {
+                    if (it == null) call.respondText(
                         text = "Cover not found.",
                         status = HttpStatusCode.NotFound,
                     )
-                } else {
-                    call.respondImage(image)
+                    else call.respondImage(it)
                 }
+                .onFailure { handleFailure(it) }
+        }?.onRemote {
+            // Using Cache
+            library
+                ?.getManga(loc.mangaId)
+                ?.map { it.getCover() }
+                ?.getOrNull()
+                ?.let { return@onRemote call.respondImage(it) }
+            if (loc.imageId == null) {
+                return@onRemote call.respondText(
+                    text = "Cover not found.",
+                    status = HttpStatusCode.NotFound,
+                )
             }
+            source.getImage(loc.imageId)
+                .onSuccess { call.respondImage(it) }
+                .onFailure { handleFailure(it) }
         }
+    }
 
-        post<ProviderResource.LoginByCookies> { loc ->
-            getRemoteProvider(loc.providerId)?.apply {
-                val cookies = call.receive<Map<String, String>>()
-                val isSuccess = source.loginFeature?.cookiesLogin?.login(cookies) ?: false
-                if (isSuccess) call.respondText("Success")
-                else call.respondText(status = HttpStatusCode.InternalServerError, text = "")
-            }
-        }
-
-        post<ProviderResource.LoginByPassword> { loc ->
-            getRemoteProvider(loc.providerId)?.apply {
-                val isSuccess = source.loginFeature?.passwordLogin?.login(loc.username, loc.password) ?: false
-                if (isSuccess) call.respondText("Success")
-                else call.respondText(status = HttpStatusCode.InternalServerError, text = "")
-            }
-        }
-
-        post<ProviderResource.Logout> { loc ->
-            getRemoteProvider(loc.providerId)?.apply {
-                source.loginFeature?.logout()
-                call.respondText("Success")
-            }
-        }
-
-        get<ProviderResource.Comment> { loc ->
-            getRemoteProvider(loc.providerId)?.apply {
-                source.commentFeature?.getComment(loc.mangaId, loc.page)
-                    ?.onSuccess { call.respond(it) }
-                    ?.onFailure { handleFailure(it) }
-                    ?: call.respondText(
-                        text = "Comment not found.",
+    get<Provider.Content> { loc ->
+        getProvider(loc.providerId)?.onLocal {
+            library
+                .getManga(loc.mangaId)
+                .andThen { it.getChapter(loc.collectionId, loc.chapterId) }
+                .map { it.getContent() }
+                .onSuccess {
+                    if (it == null) call.respondText(
+                        text = "Content not found.",
                         status = HttpStatusCode.NotFound,
                     )
-            }
-        }
-
-        get<ProviderResource.Board> { loc ->
-            getProvider(loc.providerId)
-                ?.onLocal {
-                    library
-                        .search(loc.page, "")
-                        .map { it.toDto() }
-                        .let { call.respond(it) }
+                    else call.respond(it)
                 }
-                ?.onRemote {
-                    source
-                        .getBoard(loc.boardId, loc.page, call.request.queryParameters)
-                        .map { list -> list.map { it.toDto() } }
-                        .onSuccess { call.respond(it) }
-                        .onFailure { handleFailure(it) }
+                .onFailure { handleFailure(it) }
+        }?.onRemote {
+            // Using Cache
+            library
+                ?.getManga(loc.mangaId)
+                ?.andThen { it.getChapter(loc.collectionId, loc.chapterId) }
+                ?.map { it.takeIf { it.isFinished() }?.getContent() }
+                ?.getOrNull()
+                ?.let { return@onRemote call.respond(it) }
+            source.getContent(loc.mangaId, loc.chapterId)
+                .onSuccess { call.respond(it) }
+                .onFailure { handleFailure(it) }
+        }
+    }
+
+    get<Provider.Image> { loc ->
+        getProvider(loc.providerId)?.onLocal {
+            library
+                .getManga(loc.mangaId)
+                .andThen { it.getChapter(loc.collectionId, loc.chapterId) }
+                .map { it.getImage(loc.imageId) }
+                .onSuccess {
+                    if (it == null) call.respondText(
+                        text = "Image not found.",
+                        status = HttpStatusCode.NotFound,
+                    )
+                    else call.respondImage(it)
                 }
-        }
-
-        get<ProviderResource.Manga> { loc ->
-            getProvider(loc.providerId)?.onLocal {
-                library
-                    .getManga(loc.mangaId)
-                    .map { it.getDetail().toDto() }
-                    .onSuccess { call.respond(it) }
-                    .onFailure { handleFailure(it) }
-            }?.onRemote {
-                source
-                    .getManga(loc.mangaId)
-                    .map { it.toDto() }
-                    .onSuccess { call.respond(it) }
-                    .onFailure { handleFailure(it) }
-            }
-        }
-
-        get<ProviderResource.Cover> { loc ->
-            getProvider(loc.providerId)?.onLocal {
-                library
-                    .getManga(loc.mangaId)
-                    .map { it.getCover() }
-                    .onSuccess {
-                        if (it == null) call.respondText(
-                            text = "Cover not found.",
-                            status = HttpStatusCode.NotFound,
-                        )
-                        else call.respondImage(it)
-                    }
-                    .onFailure { handleFailure(it) }
-            }?.onRemote {
-                // Using Cache
-                library
-                    ?.getManga(loc.mangaId)
-                    ?.map { it.getCover() }
-                    ?.getOrNull()
-                    ?.let { return@onRemote call.respondImage(it) }
-                source.getImage(loc.imageId)
-                    .onSuccess { call.respondImage(it) }
-                    .onFailure { handleFailure(it) }
-            }
-        }
-
-        get<ProviderResource.Content> { loc ->
-            getProvider(loc.providerId)?.onLocal {
-                library
-                    .getManga(loc.mangaId)
-                    .andThen { it.getChapter(loc.collectionId, loc.chapterId) }
-                    .map { it.getContent() }
-                    .onSuccess {
-                        if (it == null) call.respondText(
-                            text = "Content not found.",
-                            status = HttpStatusCode.NotFound,
-                        )
-                        else call.respond(it)
-                    }
-                    .onFailure { handleFailure(it) }
-            }?.onRemote {
-                // Using Cache
-                library
-                    ?.getManga(loc.mangaId)
-                    ?.andThen { it.getChapter(loc.collectionId, loc.chapterId) }
-                    ?.map { it.takeIf { it.isFinished() }?.getContent() }
-                    ?.getOrNull()
-                    ?.let { return@onRemote call.respond(it) }
-                source.getContent(loc.mangaId, loc.chapterId)
-                    .onSuccess { call.respond(it) }
-                    .onFailure { handleFailure(it) }
-            }
-        }
-
-        get<ProviderResource.Image> { loc ->
-            getProvider(loc.providerId)?.onLocal {
-                library
-                    .getManga(loc.mangaId)
-                    .andThen { it.getChapter(loc.collectionId, loc.chapterId) }
-                    .map { it.getImage(loc.imageId) }
-                    .onSuccess {
-                        if (it == null) call.respondText(
-                            text = "Image not found.",
-                            status = HttpStatusCode.NotFound,
-                        )
-                        else call.respondImage(it)
-                    }
-                    .onFailure { handleFailure(it) }
-            }?.onRemote {
-                // Using Cache
-                library
-                    ?.getManga(loc.mangaId)
-                    ?.andThen { it.getChapter(loc.collectionId, loc.chapterId) }
-                    ?.map { it.getImage(loc.imageId) }
-                    ?.getOrNull()
-                    ?.let { return@onRemote call.respondImage(it) }
-                source.getImage(loc.imageId)
-                    .onSuccess { call.respondImage(it) }
-                    .onFailure { handleFailure(it) }
-            }
+                .onFailure { handleFailure(it) }
+        }?.onRemote {
+            // Using Cache
+            library
+                ?.getManga(loc.mangaId)
+                ?.andThen { it.getChapter(loc.collectionId, loc.chapterId) }
+                ?.map { it.getImage(loc.imageId) }
+                ?.getOrNull()
+                ?.let { return@onRemote call.respondImage(it) }
+            source.getImage(loc.imageId)
+                .onSuccess { call.respondImage(it) }
+                .onFailure { handleFailure(it) }
         }
     }
 }
 
-private sealed interface Provider {
-    data class Local(val library: Library) : Provider {
+private sealed interface ProviderAdapter {
+    data class Local(val library: Library) : ProviderAdapter {
         fun Manga.toDto() =
             MangaDto(
                 state = MangaState.Local,
@@ -328,7 +353,7 @@ private sealed interface Provider {
             )
     }
 
-    data class Remote(val source: Source, val library: Library?) : Provider {
+    data class Remote(val source: Source, val library: Library?) : ProviderAdapter {
         fun getMangaState(id: String) =
             if (library?.getManga(id)?.getOrNull() == null) MangaState.Remote
             else MangaState.RemoteInLibrary
@@ -349,12 +374,12 @@ private sealed interface Provider {
     }
 }
 
-private inline fun Provider.onLocal(action: Provider.Local.() -> Unit): Provider {
-    if (this is Provider.Local) action()
+private inline fun ProviderAdapter.onLocal(action: ProviderAdapter.Local.() -> Unit): ProviderAdapter {
+    if (this is ProviderAdapter.Local) action()
     return this
 }
 
-private inline fun Provider.onRemote(action: Provider.Remote.() -> Unit): Provider {
-    if (this is Provider.Remote) action()
+private inline fun ProviderAdapter.onRemote(action: ProviderAdapter.Remote.() -> Unit): ProviderAdapter {
+    if (this is ProviderAdapter.Remote) action()
     return this
 }
