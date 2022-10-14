@@ -7,7 +7,11 @@ import me.fishhawk.lisu.library.model.*
 import me.fishhawk.lisu.util.*
 import java.nio.file.Path
 
-private val json = Json { ignoreUnknownKeys = true }
+private val json = Json {
+    prettyPrint = true
+    isLenient = true
+    ignoreUnknownKeys = true
+}
 
 private inline fun <reified T> Path.deserializeAs(): Result<T> {
     return readText().andThen { safeRunCatching { json.decodeFromString(it) } }
@@ -156,7 +160,7 @@ private fun detectCollections(
             .sortedWith(alphanumericOrder())
             .map {
                 val chapterId = it.name
-                val metadata = chapterMetadata?.collections?.get(collectionId)?.get(chapterId)
+                val metadata = chapterMetadata?.get(collectionId)?.get(chapterId)
                 if (metadata == null) {
                     Chapter(
                         id = chapterId,

@@ -6,6 +6,7 @@ import me.fishhawk.lisu.download.model.MangaDownloadTask
 import me.fishhawk.lisu.library.ChapterAccessor
 import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.library.MangaAccessor
+import me.fishhawk.lisu.library.model.ChapterMetadata
 import me.fishhawk.lisu.library.model.MangaChapterMetadata
 import me.fishhawk.lisu.library.model.MangaMetadata
 import me.fishhawk.lisu.source.Source
@@ -79,7 +80,15 @@ class Worker(
                 .getOrThrow()
 
             if (!localMangaAccessor.hasMetadata()) {
-                localMangaAccessor.setMetadata(MangaMetadata.fromMangaDetail(remoteMangaDetail))
+                localMangaAccessor.setMetadata(
+                    MangaMetadata(
+                        title = remoteMangaDetail.title,
+                        authors = remoteMangaDetail.authors,
+                        isFinished = remoteMangaDetail.isFinished,
+                        description = remoteMangaDetail.description,
+                        tags = remoteMangaDetail.tags,
+                    )
+                )
             }
             if (!localMangaAccessor.hasCover()) {
                 remoteMangaDetail.cover
@@ -88,7 +97,13 @@ class Worker(
                     ?.let { localMangaAccessor.setCover(it) }
             }
             // TODO: Incremental updates to avoid remote corruption
-            localMangaAccessor.setChapterMetadata(MangaChapterMetadata.fromMangaDetail(remoteMangaDetail))
+            localMangaAccessor.setChapterMetadata(
+                remoteMangaDetail.collections.mapValues { (_, chapters) ->
+                    chapters
+                        .associateBy { it.id }
+                        .mapValues { (_, it) -> ChapterMetadata(it.name, it.title) }
+                }
+            )
 
             val chapterTasks = mutableListOf<ChapterDownloadTask>()
             remoteMangaDetail.collections.forEach { (collectionId, chapters) ->

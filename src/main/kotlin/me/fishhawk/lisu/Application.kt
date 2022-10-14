@@ -72,15 +72,10 @@ private class Lisu : CliktCommand() {
         // Start server.
         embeddedServer(Netty, port) {
             install(Resources)
-
-            install(ContentNegotiation) {
-                json(Json {
-                    isLenient = true
-                })
-            }
-
             install(WebSockets)
-
+            install(ContentNegotiation) {
+                json(Json)
+            }
             install(CallLogging) {
                 format { call ->
                     val status = call.response.status()
