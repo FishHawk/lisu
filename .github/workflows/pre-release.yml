@@ -1,0 +1,53 @@
+name: pre-release
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build app
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Build app and run unit tests
+        uses: gradle/gradle-command-action@v2
+        with:
+          arguments: shadowJar
+
+      - name: Retrieve version
+        run: |
+          echo "VERSION=v$(java -jar build/libs/lisu-*.jar --version | cut -d " " -f 3)" >> $GITHUB_ENV
+
+      - name: Delete old pre-release
+        uses: dev-drprasad/delete-tag-and-release@v0.2.0
+        with:
+          delete_release: true
+          tag_name: latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pre-release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          name: Lisu ${{ env.VERSION }}-SNAPSHOT
+          files: |
+            build/libs/*.jar
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

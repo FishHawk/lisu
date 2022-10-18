@@ -2,7 +2,7 @@ plugins {
     application
     kotlin("jvm") version "1.7.0"
     kotlin("plugin.serialization") version "1.7.0"
-    id("com.github.johnrengelman.shadow") version "7.1.0"
+    id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 group = "me.fishhawk"
@@ -58,19 +58,9 @@ tasks.test {
     useJUnitPlatform()
 }
 
-//tasks.shadowJar {
-//    archiveClassifier.set("")
-//    manifest {
-//        attributes(Pair("Main-Class", "me.fishhawk.ApplicationKt"))
-//    }
-//}
-//
-//tasks {
-//    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
-//        archiveBaseName.set("shadow")
-//        mergeServiceFiles()
-//        manifest {
-//            attributes(mapOf("Main-Class" to "com.github.csolem.gradle.shadow.kotlin.example.App"))
-//        }
-//    }
-//}
+tasks.shadowJar {
+    archiveClassifier.set("")
+    manifest {
+        attributes("Main-Class" to "me.fishhawk.ApplicationKt")
+    }
+}

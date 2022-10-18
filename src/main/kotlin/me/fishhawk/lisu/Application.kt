@@ -5,6 +5,7 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.versionOption
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
 import io.ktor.serialization.kotlinx.json.*
@@ -24,6 +25,10 @@ import me.fishhawk.lisu.library.LibraryManager
 import me.fishhawk.lisu.source.SourceManager
 
 private class Lisu : CliktCommand() {
+    init {
+        versionOption("0.0.1")
+    }
+
     val readonly by this
         .option(
             "--readonly",
@@ -107,4 +112,6 @@ private class Lisu : CliktCommand() {
     }
 }
 
-fun main(argv: Array<String>) = Lisu().main(argv)
+fun main(argv: Array<String>) {
+    Lisu().main(argv)
+}
