@@ -51,7 +51,6 @@ dependencies {
 
 application {
     mainClass.set("me.fishhawk.lisu.ApplicationKt")
-    applicationDefaultJvmArgs = listOf("--Djava.net.useSystemProxies=true")
 }
 
 tasks.test {
