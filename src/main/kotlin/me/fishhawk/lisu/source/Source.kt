@@ -2,6 +2,7 @@ package me.fishhawk.lisu.source
 
 import com.tfowl.ktor.client.features.JsoupPlugin
 import io.ktor.client.*
+import io.ktor.client.engine.*
 import io.ktor.client.engine.java.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
@@ -86,6 +87,12 @@ abstract class Source {
                 })
             }
             expectSuccess = true
+            val httpProxy = System.getenv("HTTP_PROXY")
+            if (httpProxy != null) {
+                engine {
+                    proxy = ProxyBuilder.http(httpProxy)
+                }
+            }
         }
     }
 }
