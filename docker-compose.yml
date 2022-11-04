@@ -1,0 +1,12 @@
+services:
+  lisu:
+    image: ghcr.io/fishhawk/lisu
+
+    environment:
+      - HTTP_PROXY
+    ports:
+      - ${PORT}:8080
+    volumes:
+      - ${MANGAS_PATH}:/mangas
+
+    restart: always

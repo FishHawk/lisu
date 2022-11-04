@@ -30,8 +30,10 @@ ENV PATH "${JAVA_HOME}/bin:${PATH}"
 COPY --from=builder /javaruntime $JAVA_HOME
 COPY --from=builder /lisu/build/install/lisu /lisu
 
-VOLUME /data
+ENV LANG C.UTF-8
+
+VOLUME /mangas
 
 EXPOSE 8080
 
-CMD ["./lisu/bin/lisu", "/data"]
+CMD ["./lisu/bin/lisu", "/mangas"]
