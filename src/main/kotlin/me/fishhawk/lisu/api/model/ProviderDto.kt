@@ -2,8 +2,8 @@ package me.fishhawk.lisu.api.model
 
 import kotlinx.serialization.Serializable
 import me.fishhawk.lisu.library.Library
-import me.fishhawk.lisu.source.model.BoardId
-import me.fishhawk.lisu.source.model.BoardModel
+import me.fishhawk.lisu.source.BoardId
+import me.fishhawk.lisu.source.BoardModel
 import me.fishhawk.lisu.source.Source
 
 const val LocalProviderId = "local"

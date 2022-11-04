@@ -4,6 +4,11 @@ import kotlinx.serialization.Serializable
 import me.fishhawk.lisu.util.LocalDateTimeSerializer
 import java.time.LocalDateTime
 
+data class MangaPage(
+    val list: List<Manga>,
+    val nextKey: String? = null,
+)
+
 data class Manga(
     val id: String,
 

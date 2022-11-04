@@ -10,8 +10,8 @@ import kotlinx.serialization.json.*
 import me.fishhawk.lisu.library.model.Chapter
 import me.fishhawk.lisu.library.model.Manga
 import me.fishhawk.lisu.library.model.MangaDetail
+import me.fishhawk.lisu.library.model.MangaPage
 import me.fishhawk.lisu.source.*
-import me.fishhawk.lisu.source.model.*
 import me.fishhawk.lisu.util.Image
 
 class Bilibili : Source() {
@@ -79,7 +79,8 @@ class Bilibili : Source() {
         }
     }
 
-    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<Manga> {
+    override suspend fun getBoardImpl(boardId: BoardId, key: String, filters: Parameters): MangaPage {
+        val page = if (key.isEmpty()) 0 else key.toInt()
         return when (boardId) {
             BoardId.Main ->
                 api.getClassPage(
@@ -99,6 +100,7 @@ class Bilibili : Source() {
                             isFinished = obj["is_finish"]?.asMangaIsFinish(),
                         )
                     }
+
             BoardId.Rank ->
                 if (page > 0) emptyList()
                 else api.getHomeHot(filters.int("榜单"))
@@ -113,6 +115,7 @@ class Bilibili : Source() {
                             isFinished = obj["is_finish"]?.asMangaIsFinish()
                         )
                     }
+
             BoardId.Search -> {
                 api.search(page, filters.keywords()).body<JsonObject>().let { json ->
                     json["data"]!!.jsonObject["list"]!!.jsonArray.map { it.jsonObject }.map { obj ->
@@ -126,6 +129,12 @@ class Bilibili : Source() {
                     }
                 }
             }
+        }.let {
+            MangaPage(
+                list = it,
+                nextKey = (page + 1).toString(),
+            )
+        }
 //            api.getDailyPush(
 //                page,
 //                LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
@@ -139,7 +148,6 @@ class Bilibili : Source() {
 //                        title = obj["title"]?.jsonPrimitive?.content,
 //                    )
 //                }
-        }
     }
 
     override suspend fun getMangaImpl(mangaId: String): MangaDetail {

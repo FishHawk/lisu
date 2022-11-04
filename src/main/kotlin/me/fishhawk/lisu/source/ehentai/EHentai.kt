@@ -12,8 +12,8 @@ import kotlinx.serialization.json.*
 import me.fishhawk.lisu.library.model.Chapter
 import me.fishhawk.lisu.library.model.Manga
 import me.fishhawk.lisu.library.model.MangaDetail
+import me.fishhawk.lisu.library.model.MangaPage
 import me.fishhawk.lisu.source.*
-import me.fishhawk.lisu.source.model.*
 import me.fishhawk.lisu.util.Image
 import org.jsoup.nodes.Document
 
@@ -70,7 +70,8 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
         }
     }
 
-    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<Manga> {
+    override suspend fun getBoardImpl(boardId: BoardId, key: String, filters: Parameters): MangaPage {
+        val page = if (key.isEmpty()) 0 else key.toInt()
         return when (boardId) {
             BoardId.Main -> api.latest(
                 page,
@@ -86,17 +87,24 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
                 minimumRating = Api.latestRatings[filters.int(R.minimumRating)],
                 minimumPages = filters.string(R.minimumPages),
                 maximumPages = filters.string(R.maximumPages),
-            ).parseMangaList()
+            )
+
             BoardId.Rank -> {
                 val type = filters.int("Type")
                 if (type == 0) {
-                    if (page > 0) emptyList()
-                    else api.popular().parseMangaList()
+                    if (page > 0) return MangaPage(list = emptyList())
+                    else api.popular()
                 } else {
-                    api.toplist(page, Api.toplistTypes[type]).parseMangaList()
+                    api.toplist(page, Api.toplistTypes[type])
                 }
             }
+
             else -> throw Error("board not support")
+        }.let { doc ->
+            MangaPage(
+                list = doc.parseMangaList(),
+                nextKey = (page + 1).toString(),
+            )
         }
     }
 
@@ -194,7 +202,7 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
             .sortedBy(Pair<Int, String>::first)
             .map { it.second }
 
-    private fun Document.parseMangaList(): List<Manga> =
+    protected fun Document.parseMangaList(): List<Manga> =
         select("table.itg td.glname")
             .mapNotNull { it.parent() }
             .map { tr ->
@@ -227,20 +235,6 @@ abstract class EHentaiBase(enableExHentai: Boolean) : Source() {
             val galleryToken = pathSegments[2]
             return "$galleryId.$galleryToken"
         }
-
-        private object R {
-            const val genres = "Genres"
-            const val searchGalleryName = "Search Gallery Name"
-            const val searchGalleryTags = "Search Gallery Tags"
-            const val searchGalleryDescription = "Search Gallery Description"
-            const val searchExpungedGalleries = "Search Expunged Galleries"
-            const val onlyShowGalleriesWithTorrents = "Only Show Galleries With Torrents"
-            const val searchLowPowerTags = "Search Low-Power Tags"
-            const val searchDownvotedTags = "Search Downvoted Tags"
-            const val minimumRating = "Minimum Rating"
-            const val minimumPages = "Minimum Pages"
-            const val maximumPages = "Maximum Pages"
-        }
     }
 }
 
@@ -250,6 +244,26 @@ class EHentai : EHentaiBase(false) {
 
 class ExHentai : EHentaiBase(true) {
     override val id: String = "ExHentai"
+
+    override val boardModel: Map<BoardId, BoardModel> = super.boardModel.mapValues {
+        if (it.key == BoardId.Main) {
+            BoardModel(
+                hasSearchBar = true,
+                advance = mapOf(
+                    R.genres to FilterModel.MultipleSelect(Api.latestGenres.map { it.name }),
+                    R.browseExpungedGalleries to FilterModel.Switch(),
+                    R.requireGalleryTorrent to FilterModel.Switch(),
+                    R.searchLowPowerTags to FilterModel.Switch(),
+                    R.minimumRating to FilterModel.Select(Api.latestRatings.map { it.name }),
+                    R.minimumPages to FilterModel.Text,
+                    R.maximumPages to FilterModel.Text,
+                )
+            )
+        } else {
+            it.value
+        }
+    }
+
     override val loginFeature = object : LoginFeature() {
         override suspend fun isLogged() = api.isLogged()
         override suspend fun logout() = api.logout()
@@ -270,4 +284,46 @@ class ExHentai : EHentaiBase(true) {
 //            }
 //        }
     }
+
+    override suspend fun getBoardImpl(boardId: BoardId, key: String, filters: Parameters): MangaPage {
+        return when (boardId) {
+            BoardId.Main -> api.latestNewVersion(
+                key,
+                keywords = filters.keywords(),
+                genres = filters.set(R.genres).map { Api.latestGenres[it] }.toSet(),
+                browseExpungedGalleries = filters.boolean(R.browseExpungedGalleries),
+                searchLowPowerTags = filters.boolean(R.searchLowPowerTags),
+                requireGalleryTorrent = filters.boolean(R.requireGalleryTorrent),
+                minimumRating = Api.latestRatings[filters.int(R.minimumRating)],
+                minimumPages = filters.string(R.minimumPages),
+                maximumPages = filters.string(R.maximumPages),
+            ).let { doc ->
+                val list = doc.parseMangaList()
+                MangaPage(
+                    list = list,
+                    nextKey = list.lastOrNull()?.id?.substringBefore('.'),
+                )
+            }
+
+            else -> super.getBoardImpl(boardId, key, filters)
+        }
+    }
+}
+
+private object R {
+    const val genres = "Genres"
+    const val searchGalleryName = "Search Gallery Name"
+    const val searchGalleryTags = "Search Gallery Tags"
+    const val searchGalleryDescription = "Search Gallery Description"
+    const val searchExpungedGalleries = "Search Expunged Galleries"
+    const val onlyShowGalleriesWithTorrents = "Only Show Galleries With Torrents"
+    const val searchLowPowerTags = "Search Low-Power Tags"
+    const val searchDownvotedTags = "Search Downvoted Tags"
+    const val minimumRating = "Minimum Rating"
+    const val minimumPages = "Minimum Pages"
+    const val maximumPages = "Maximum Pages"
+
+    // new api
+    const val browseExpungedGalleries = "Browse Expunged Galleries"
+    const val requireGalleryTorrent = "Require Gallery Torrent"
 }

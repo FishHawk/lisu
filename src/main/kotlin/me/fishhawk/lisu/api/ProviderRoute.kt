@@ -16,7 +16,8 @@ import me.fishhawk.lisu.api.model.*
 import me.fishhawk.lisu.library.*
 import me.fishhawk.lisu.library.model.Manga
 import me.fishhawk.lisu.library.model.MangaDetail
-import me.fishhawk.lisu.source.model.BoardId
+import me.fishhawk.lisu.library.model.MangaPage
+import me.fishhawk.lisu.source.BoardId
 import me.fishhawk.lisu.source.Source
 import me.fishhawk.lisu.source.SourceManager
 import me.fishhawk.lisu.util.Image
@@ -62,7 +63,7 @@ private class Provider {
         val parent: Provider = Provider(),
         val providerId: String,
         val boardId: BoardId,
-        val page: Int,
+        val key: String,
         val keywords: String?,
     )
 
@@ -218,14 +219,14 @@ fun Route.providerRoute(
         getProvider(loc.providerId)
             ?.onLocal {
                 library
-                    .search(loc.page, "")
-                    .map { it.toDto() }
+                    .search(loc.key, "")
+                    .toDto()
                     .let { call.respond(it) }
             }
             ?.onRemote {
                 source
-                    .getBoard(loc.boardId, loc.page, call.request.queryParameters)
-                    .map { list -> list.map { it.toDto() } }
+                    .getBoard(loc.boardId, loc.key, call.request.queryParameters)
+                    .map { it.toDto() }
                     .onSuccess { call.respond(it) }
                     .onFailure { handleFailure(it) }
             }
@@ -338,6 +339,12 @@ fun Route.providerRoute(
 
 private sealed interface ProviderAdapter {
     data class Local(val library: Library) : ProviderAdapter {
+        fun MangaPage.toDto() =
+            MangaPageDto(
+                list = list.map { it.toDto() },
+                nextKey = nextKey,
+            )
+
         fun Manga.toDto() =
             MangaDto(
                 state = MangaState.Local,
@@ -357,6 +364,12 @@ private sealed interface ProviderAdapter {
         fun getMangaState(id: String) =
             if (library?.getManga(id)?.getOrNull() == null) MangaState.Remote
             else MangaState.RemoteInLibrary
+
+        fun MangaPage.toDto() =
+            MangaPageDto(
+                list = list.map { it.toDto() },
+                nextKey = nextKey,
+            )
 
         fun Manga.toDto() =
             MangaDto(

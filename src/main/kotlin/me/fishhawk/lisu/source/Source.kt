@@ -9,9 +9,8 @@ import io.ktor.client.plugins.cookies.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
-import me.fishhawk.lisu.library.model.Manga
 import me.fishhawk.lisu.library.model.MangaDetail
-import me.fishhawk.lisu.source.model.*
+import me.fishhawk.lisu.library.model.MangaPage
 import me.fishhawk.lisu.util.Image
 import me.fishhawk.lisu.util.safeRunCatching
 
@@ -25,9 +24,9 @@ abstract class Source {
 
     open val commentFeature: CommentFeature? = null
 
-    protected abstract suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<Manga>
-    suspend fun getBoard(boardId: BoardId, page: Int, filters: Parameters) =
-        safeRunCatching { getBoardImpl(boardId = boardId, page = page, filters = filters) }
+    protected abstract suspend fun getBoardImpl(boardId: BoardId, key: String, filters: Parameters): MangaPage
+    suspend fun getBoard(boardId: BoardId, key: String, filters: Parameters) =
+        safeRunCatching { getBoardImpl(boardId = boardId, key = key, filters = filters) }
 
     protected abstract suspend fun getMangaImpl(mangaId: String): MangaDetail
     suspend fun getManga(mangaId: String) =

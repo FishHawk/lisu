@@ -13,6 +13,12 @@ data class MangaKeyDto(
     val id: String,
 )
 
+@Serializable
+data class MangaPageDto(
+    val list: List<MangaDto>,
+    val nextKey: String?,
+)
+
 enum class MangaState {
     Local, Remote, RemoteInLibrary
 }

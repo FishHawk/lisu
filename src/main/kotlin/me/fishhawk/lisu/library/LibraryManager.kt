@@ -18,13 +18,17 @@ class LibraryManager(private val path: Path) {
                 }
             }
 
-    fun search(page: Int, keywords: String): List<Pair<String, Manga>> {
+    fun search(key: String, keywords: String): List<Pair<String, Manga>> {
         val filters = Filter.fromKeywords(keywords)
         return listMangas()
             .sortedByDescending { it.second.path.getLastModifiedTime() }
             .asSequence()
+            .let { seq ->
+                if (key.isEmpty()) seq
+                else seq.dropWhile { it.second.id != key }.drop(1)
+            }
+            .take(100)
             .filter { (_, manga) -> filters.all { it.isPass(manga.getSearchEntry()) } }
-            .page(page = page, pageSize = 100)
             .map { (libraryId, manga) -> libraryId to manga.get() }
             .toList()
     }

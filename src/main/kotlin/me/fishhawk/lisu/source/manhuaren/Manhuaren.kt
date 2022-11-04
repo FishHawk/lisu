@@ -10,8 +10,8 @@ import kotlinx.serialization.json.*
 import me.fishhawk.lisu.library.model.Chapter
 import me.fishhawk.lisu.library.model.Manga
 import me.fishhawk.lisu.library.model.MangaDetail
+import me.fishhawk.lisu.library.model.MangaPage
 import me.fishhawk.lisu.source.*
-import me.fishhawk.lisu.source.model.*
 import me.fishhawk.lisu.util.Image
 
 class Manhuaren : Source() {
@@ -35,14 +35,21 @@ class Manhuaren : Source() {
 
     private val api = Api(client = client)
 
-    override suspend fun getBoardImpl(boardId: BoardId, page: Int, filters: Parameters): List<Manga> {
+    override suspend fun getBoardImpl(boardId: BoardId, key: String, filters: Parameters): MangaPage {
+        val page = if (key.isEmpty()) 0 else key.toInt()
+
         return when (boardId) {
             BoardId.Main -> api.getCategoryMangas(
                 page,
                 filters.int("类型"),
                 filters.int("状态"),
             )
-            BoardId.Search -> api.getSearchManga(page, filters.keywords())
+
+            BoardId.Search -> api.getSearchManga(
+                page,
+                filters.keywords(),
+            )
+
             BoardId.Rank -> when (val type = filters.int("榜单")) {
                 0 -> api.getUpdate(page)
                 1 -> api.getRelease(page)
@@ -50,7 +57,10 @@ class Manhuaren : Source() {
             }
         }.body<JsonObject>().let {
             val obj = it["response"]!!.jsonObject
-            parseJsonArrayToMangas((obj["result"] ?: obj["mangas"]!!).jsonArray)
+            MangaPage(
+                list = parseJsonArrayToMangas((obj["result"] ?: obj["mangas"]!!).jsonArray),
+                nextKey = (page + 1).toString()
+            )
         }
     }
 

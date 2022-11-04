@@ -88,6 +88,32 @@ class Api(
             maximumPages.toIntOrNull()?.let { parameter("f_spt", it) }
         }.body<Document>()
 
+    suspend fun latestNewVersion(
+        key: String?,
+        keywords: String,
+        genres: Set<LatestGenre>,
+        browseExpungedGalleries: Boolean,
+        searchLowPowerTags: Boolean,
+        requireGalleryTorrent: Boolean,
+        minimumRating: LatestRating,
+        minimumPages: String,
+        maximumPages: String,
+    ) =
+        client.get(baseUrl) {
+            if (key != null) parameter("next", key)
+            if (keywords.isNotBlank()) parameter("f_search", keywords)
+            if (genres.isNotEmpty()) parameter("f_cats", 1023 - genres.sumOf { it.mask })
+            if (browseExpungedGalleries) parameter("f_sh", "on")
+            if (requireGalleryTorrent) parameter("f_sto", "on")
+            if (searchLowPowerTags) parameter("f_sdt", "on")
+            if (minimumRating.star > 0) {
+                parameter("f_sr", "on")
+                parameter("f_srdd", minimumRating.star.toString())
+            }
+            minimumPages.toIntOrNull()?.let { parameter("f_spf", it) }
+            maximumPages.toIntOrNull()?.let { parameter("f_spt", it) }
+        }.body<Document>()
+
     suspend fun popular() =
         client.get("${baseUrl}popular").body<Document>()
 

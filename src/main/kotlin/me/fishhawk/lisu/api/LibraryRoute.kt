@@ -14,6 +14,7 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import me.fishhawk.lisu.api.model.MangaDto
 import me.fishhawk.lisu.api.model.MangaKeyDto
+import me.fishhawk.lisu.api.model.MangaPageDto
 import me.fishhawk.lisu.api.model.MangaState
 import me.fishhawk.lisu.download.Downloader
 import me.fishhawk.lisu.library.LibraryManager
@@ -29,7 +30,7 @@ private class Library {
     @Resource("/search")
     data class Search(
         val parent: Library = Library(),
-        val page: Int,
+        val key: String,
         val keywords: String,
     )
 
@@ -81,7 +82,7 @@ fun Route.libraryRoute(
 
     get<Library.Search> { loc ->
         libraryManager
-            .search(loc.page, loc.keywords)
+            .search(loc.key, loc.keywords)
             .map { (libraryId, manga) ->
                 MangaDto(
                     state = getMangaState(libraryId),
@@ -89,7 +90,14 @@ fun Route.libraryRoute(
                     manga = manga,
                 )
             }
-            .let { call.respond(it) }
+            .let {
+                call.respond(
+                    MangaPageDto(
+                        list = it,
+                        nextKey = it.lastOrNull()?.id,
+                    )
+                )
+            }
     }
 
     post<Library.MangaDelete> {
