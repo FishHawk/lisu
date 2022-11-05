@@ -4,8 +4,6 @@ services:
 
     environment:
       - HTTP_PROXY
-    ports:
-      - ${PORT}:8080
     volumes:
       - ${MANGAS_PATH}:/mangas
 

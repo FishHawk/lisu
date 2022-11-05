@@ -34,6 +34,6 @@ ENV LANG C.UTF-8
 
 VOLUME /mangas
 
-EXPOSE 8080
+EXPOSE 80
 
-CMD ["./lisu/bin/lisu", "/mangas"]
+CMD ["./lisu/bin/lisu", "/mangas", "-p", "80"]
