@@ -13,30 +13,30 @@ class ManhuarenTest : DescribeSpec({
         val source = Manhuaren()
 
         it("#getBoard Main") {
-            source.getBoard(BoardId.Main, 0, Parameters.build {
+            source.getBoard(BoardId.Main, "0", Parameters.build {
                 append("类型", "0")
                 append("状态", "0")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
         }
 
         it("#getBoard Rank") {
-            source.getBoard(BoardId.Rank, 0, Parameters.build {
+            source.getBoard(BoardId.Rank, "0", Parameters.build {
                 append("榜单", "2")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
 
-            source.getBoard(BoardId.Rank, 0, Parameters.build {
+            source.getBoard(BoardId.Rank, "0", Parameters.build {
                 append("榜单", "0")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
 
-            source.getBoard(BoardId.Rank, 0, Parameters.build {
+            source.getBoard(BoardId.Rank, "0", Parameters.build {
                 append("榜单", "1")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
         }
 
         it("#getBoard Search") {
-            source.getBoard(BoardId.Search, 0, Parameters.build {
+            source.getBoard(BoardId.Search, "0", Parameters.build {
                 append("keywords", "龙珠超")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
                 .first().title.shouldBe("龙珠超")
         }
 

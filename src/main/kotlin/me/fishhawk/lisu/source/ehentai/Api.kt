@@ -26,15 +26,13 @@ class Api(
         cookiesStorage.addCookie(baseUrl, Cookie(name = igneous, value = "", expires = GMTDate.START))
     }
 
-    suspend fun login(
+    suspend fun loginByCookies(
         ipb_member_id: String,
         ipb_pass_hash: String,
-        igneous: String
     ): Boolean {
         listOf(
             Api.ipb_member_id to ipb_member_id,
             Api.ipb_pass_hash to ipb_pass_hash,
-            Api.igneous to igneous,
         ).forEach { (name, value) ->
             cookiesStorage.addCookie(
                 baseUrl,

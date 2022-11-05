@@ -13,18 +13,18 @@ class EHentaiTest : DescribeSpec({
         val source = EHentai()
 
         it("#getBoard Main") {
-            source.getBoard(BoardId.Main, 0, Parameters.Empty)
-                .shouldBeSuccess().shouldNotBeEmpty()
+            source.getBoard(BoardId.Main, "0", Parameters.Empty)
+                .shouldBeSuccess().list.shouldNotBeEmpty()
         }
 
         it("#getBoard Rank") {
-            source.getBoard(BoardId.Rank, 0, Parameters.build {
+            source.getBoard(BoardId.Rank, "0", Parameters.build {
                 append("Type", "0")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
 
-            source.getBoard(BoardId.Rank, 0, Parameters.build {
+            source.getBoard(BoardId.Rank, "0", Parameters.build {
                 append("Type", "1")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
         }
 
         val mangaId = "2237436.b6b5a0d937"

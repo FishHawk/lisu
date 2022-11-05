@@ -270,19 +270,14 @@ class ExHentai : EHentaiBase(true) {
 
         override val cookiesLogin = object : CookiesLogin {
             override val loginSite = Api.loginUrl
-            override val cookieNames = listOf(Api.ipb_member_id, Api.ipb_pass_hash, Api.igneous)
+            override val cookieNames = listOf(Api.ipb_member_id, Api.ipb_pass_hash)
             override suspend fun login(cookies: Map<String, String>): Boolean {
-                return api.login(
+                return api.loginByCookies(
                     ipb_member_id = cookies[Api.ipb_member_id]!!,
                     ipb_pass_hash = cookies[Api.ipb_pass_hash]!!,
-                    igneous = cookies[Api.igneous]!!,
                 )
             }
         }
-//        override val passwordLogin = object : PasswordLogin {
-//            override suspend fun login(username: String, password: String): Boolean {
-//            }
-//        }
     }
 
     override suspend fun getBoardImpl(boardId: BoardId, key: String, filters: Parameters): MangaPage {

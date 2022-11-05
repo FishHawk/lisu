@@ -15,25 +15,25 @@ class BilibiliTest : DescribeSpec({
         val source = Bilibili()
 
         it("#getBoard Main") {
-            source.getBoard(BoardId.Main, 0, Parameters.build {
+            source.getBoard(BoardId.Main, "0", Parameters.build {
                 append("题材", "0")
                 append("地区", "0")
                 append("进度", "0")
                 append("收费", "0")
                 append("排序", "0")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
         }
 
         it("#getBoard Rank") {
-            source.getBoard(BoardId.Rank, 0, Parameters.build {
+            source.getBoard(BoardId.Rank, "0", Parameters.build {
                 append("榜单", "0")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
         }
 
         it("#getBoard Search") {
-            source.getBoard(BoardId.Search, 0, Parameters.build {
+            source.getBoard(BoardId.Search, "0", Parameters.build {
                 append("keywords", "迷宫饭")
-            }).shouldBeSuccess().shouldNotBeEmpty()
+            }).shouldBeSuccess().list.shouldNotBeEmpty()
                 .first().title.shouldBe("迷宫饭")
         }
 
