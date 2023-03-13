@@ -16,7 +16,7 @@ repositories {
 dependencies {
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
 
-    val ktorVersion = "2.1.2"
+    val ktorVersion = "2.2.4"
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -40,17 +40,17 @@ dependencies {
 
     implementation("com.tfowl.ktor:ktor-jsoup:2.0.0")
 
-    val krontabVersion = "0.8.1"
+    val krontabVersion = "0.9.0"
     implementation("dev.inmo:krontab:$krontabVersion")
 
-    val kotestVersion = "5.5.0"
+    val kotestVersion = "5.5.5"
     testImplementation("io.kotest:kotest-runner-junit5:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-core:$kotestVersion")
     testImplementation("io.kotest:kotest-assertions-ktor:4.4.3")
 }
 
 application {
-    mainClass.set("me.fishhawk.lisu.ApplicationKt")
+    mainClass.set("ApplicationKt")
 }
 
 tasks.test {

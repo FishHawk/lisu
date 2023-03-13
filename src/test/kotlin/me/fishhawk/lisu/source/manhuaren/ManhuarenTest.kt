@@ -5,8 +5,9 @@ import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.result.shouldBeSuccess
 import io.kotest.matchers.shouldBe
 import io.ktor.http.*
-import me.fishhawk.lisu.source.BoardId
-import me.fishhawk.lisu.source.saveTestImage
+import source.BoardId
+import source.manhuaren.Manhuaren
+import source.saveTestImage
 
 class ManhuarenTest : DescribeSpec({
     describe("Source test: manhuaren") {

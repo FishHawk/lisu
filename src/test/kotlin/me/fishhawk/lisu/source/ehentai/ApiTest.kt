@@ -1,7 +1,8 @@
 package me.fishhawk.lisu.source.ehentai
 
 import io.kotest.core.spec.style.DescribeSpec
-import me.fishhawk.lisu.source.Source
+import source.Source
+import source.ehentai.Api
 
 class ApiTest : DescribeSpec({
     describe("Source test: ehentai api") {

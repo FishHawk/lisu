@@ -3,7 +3,8 @@ package me.fishhawk.lisu.source.manhuaren
 import io.kotest.assertions.ktor.client.shouldHaveStatus
 import io.kotest.core.spec.style.DescribeSpec
 import io.ktor.http.*
-import me.fishhawk.lisu.source.Source
+import source.Source
+import source.manhuaren.Api
 
 class ApiTest : DescribeSpec({
     describe("Source test: manhuaren api") {

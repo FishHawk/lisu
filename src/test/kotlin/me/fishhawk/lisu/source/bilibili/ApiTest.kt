@@ -5,7 +5,8 @@ import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.ktor.http.*
-import me.fishhawk.lisu.source.Source
+import source.Source
+import source.bilibili.Api
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
