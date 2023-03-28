@@ -38,6 +38,8 @@ dependencies {
 
     implementation("se.sawano.java:alphanumeric-comparator:1.4.1")
 
+    implementation("org.litote.kmongo:kmongo-coroutine-serialization:4.8.0")
+
     implementation("com.tfowl.ktor:ktor-jsoup:2.0.0")
 
     val krontabVersion = "0.9.0"
